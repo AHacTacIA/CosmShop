@@ -1,13 +1,73 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@import url('https://fonts.googleapis.com/css2?family=Lexend+Giga:wght@100..900&display=swap');
+
+body{
+  background: #ffffff;
+  color: #222;
+  font-family: 'Lexend Giga', sans-serif;
+  font-weight: 300;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+
+.wrapper{
+  /*width: 1280px;*/
+  margin: 50px 10px;
+}
+
+/* Контейнер для названия и иконок */
+header > div:first-child {
+  display: flex;
+  justify-content: space-between; /* Растягиваем на всю ширину */
+  align-items: center;
+  padding: 15px 5%; /* Отступы по бокам (можно заменить на фиксированные px) */
+  position: relative; /* Для центрирования названия */
+}
+
+/* Название магазина */
+.shop_name {
+  font-family: 'Lexend Giga', sans-serif;
+  font-weight: 600;
+  font-size: 40px;
+  color: #ff00aa;
+  position: absolute; /* Вынимаем из потока */
+  left: 50%; /* Сдвигаем в центр */
+  transform: translateX(-50%); /* Точное центрирование */
+}
+
+/* Список иконок */
+.header_tabs {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 25px; /* Расстояние между иконками */
+  margin-left: auto; /* Прижимаем вправо */
+}
+
+/* Стили для иконок (без изменений) */
+.header_tabs li {
+  cursor: pointer;
+}
+
+.header_tabs li path {
+  transition: fill 0.5s ease;
+}
+
+.header_tabs li:hover path {
+  fill: #ff00aa;
+}
+
+/* Баннер (без изменений) */
+.banner {
+  background: url('./img/bannerpic_3.1.jpg') no-repeat center center;
+  background-size: cover;
+  width: 100%;
+  height: 30px;
+}
+
+footer{
+  background-color: #10000d;
+  color: white;
+  padding: 10px;
+  margin: 0px;
+  width: 100%;
 }

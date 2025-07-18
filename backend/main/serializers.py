@@ -15,18 +15,6 @@ class FavoriteSerializer(serializers.ModelSerializer):
         fields = ['favorites']
 
 
-# class BrandSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Brand
-#         fields = ['name', 'country', 'slug']
-#
-#     def create(self, validated_data):
-#         brand, created = Brand.objects.get_or_create(
-#             slug=validated_data['slug'],
-#             defaults=validated_data
-#         )
-#         return brand
-
 class BrandSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
@@ -48,31 +36,6 @@ class BulkCategorySerializer(serializers.ListSerializer):
         categories = [Category(**item) for item in validated_data]
         return Category.objects.bulk_create(categories)
 
-# class CategorySerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Category
-#         fields = ['id', 'name', 'slug', 'parent']
-#         list_serializer_class = BulkCategorySerializer
-#
-#     def create(self, validated_data):
-#         category, created = Category.objects.get_or_create(
-#             id=validated_data['id'],
-#             defaults=validated_data
-#         )
-#         return category
-
-# class CategorySerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Category
-#         fields = ['id', 'name', 'slug', 'parent']
-#         extra_kwargs = {
-#             'name': {'validators': []},  # Отключаем проверку уникальности
-#             'slug': {'validators': []}   # Отключаем проверку уникальности
-#         }
-#
-#     def to_internal_value(self, data):
-#         # Просто возвращаем данные без валидации уникальности
-#         return data
 
 class CategorySerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=True)
@@ -92,36 +55,6 @@ class CategorySerializer(serializers.ModelSerializer):
         )
         return category
 
-# class CategorySerializer(serializers.ModelSerializer):
-#     # children = serializers.SerializerMethodField()
-#     class Meta:
-#         model = Category
-#         fields = '__all__'
-
-
-# class CategorySerializer(serializers.ModelSerializer):
-#     children = serializers.SerializerMethodField()
-#
-#     class Meta:
-#         model = Category
-#         fields = ['id', 'name', 'slug', 'parent_id', 'children']
-#
-#     def get_children(self, obj):
-#         children = Category.objects.filter(parent_id=obj.id)
-#         return CategorySerializer(children, many=True).data
-
-
-# class ProductImgSerializer(serializers.ModelSerializer):
-#     url = serializers.SerializerMethodField()
-#
-#     class Meta:
-#         model = ProductImg
-#         fields = ['url', 'is_main']
-#
-#     def get_url(self, obj):
-#         if obj.image:
-#             return obj.image.url
-#         return None
 
 class ProductImgSerializer(serializers.ModelSerializer):
     class Meta:
@@ -282,105 +215,11 @@ class ProductSerializer(serializers.ModelSerializer):
 
         return product
 
-    # def create(self, validated_data):
-    #     print("Validated data:", validated_data)
-    #     # Бренд
-    #     brand_data = validated_data.pop('brand')
-    #     brand, _ = Brand.objects.get_or_create(
-    #         slug=brand_data['slug'],
-    #         defaults=brand_data
-    #     )
-    #
-    #     # Обработка категории
-    #     category_data = validated_data.pop('category')
-    #     print("Category data:", category_data)
-    #     category, _ = Category.objects.get_or_create(
-    #         id=category_data['id'],
-    #         defaults=category_data
-    #     )
-    #
-    #     # Создаем продукт
-    #     product = Product.objects.create(
-    #         brand=brand,
-    #         category=category,
-    #         **validated_data
-    #     )
-    #
-    #     # # Обработка вариантов
-    #     # variants_data = validated_data.pop('variants')
-    #     # for variant_data in variants_data:
-    #     #     images_data = variant_data.pop('images')
-    #     #     variant = ProductVar.objects.create(
-    #     #         product=product,
-    #     #         **variant_data
-    #     #     )
-    #     #
-    #     #     # Обработка изображений
-    #     #     for image_data in images_data:
-    #     #         ProductImg.objects.create(
-    #     #             variant=variant,
-    #     #             **image_data
-    #     #         )
-    #
-    #     # 4. Обработка вариантов
-    #     variants_data = validated_data.pop('variants', [])
-    #     variants = []
-    #     for variant_data in variants_data:
-    #         images_data = variant_data.pop('images', [])
-    #
-    #         # Создаем вариант продукта
-    #         variant = ProductVar.objects.create(
-    #             product=product,
-    #             **variant_data
-    #         )
-    #
-    #         # Создаем изображения для варианта
-    #         ProductImg.objects.bulk_create([
-    #             ProductImg(variant=variant, **img_data)
-    #             for img_data in images_data
-    #         ])
-    #         variants.append(variant)
-    #
-    #     # 5. Устанавливаем варианты для продукта
-    #     product.variants.set(variants)
-    #
-    #     return product
-
-
-    # def create(self, validated_data):
-    #     # Логика создания продукта со всеми связанными объектами
-    #     brand_data = validated_data.pop('brand')
-    #     category_data = validated_data.pop('category')
-    #     variants_data = validated_data.pop('variants')
-    #
-    #     # Создаем или получаем бренд
-    #     brand, _ = Brand.objects.get_or_create(slug=brand_data['slug'], defaults=brand_data)
-    #
-    #     # Создаем продукт
-    #     product = Product.objects.create(brand=brand, **validated_data)
-    #
-    #     # Создаем варианты
-    #     for variant_data in variants_data:
-    #         images_data = variant_data.pop('images')
-    #         variant = ProductVar.objects.create(product=product, **variant_data)
-    #
-    #         # Создаем изображения
-    #         for image_data in images_data:
-    #             ProductImg.objects.create(variant=variant, **image_data)
-    #
-    #     return product
 
 
 
 
 
-
-# class ProductVarSerializer(serializers.ModelSerializer):
-#     product = ProductSerializer(read_only=True)
-#
-#     class Meta:
-#         model = ProductVar
-#         fields = '__all__'
 
 
 class ReviewSerializer(serializers.ModelSerializer):
