@@ -11,6 +11,11 @@ export const categoryService ={
     return apiClient.get(`/categories/${id}/`);
   },
 
+   // Получение списка родительских категорий (parent=null)
+  getAllParentCategories: (params = {}) => {
+    return apiClient.get('/categories/parents/', {params});
+  },
+
   // Получение дочерних категорий
   getChildCategories: (parentId) => {
     return apiClient.get(`/categories/${parentId}/children/`);

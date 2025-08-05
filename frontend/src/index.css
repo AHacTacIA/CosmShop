@@ -1,73 +1,299 @@
 @import url('https://fonts.googleapis.com/css2?family=Lexend+Giga:wght@100..900&display=swap');
 
-body{
+/* Базовые стили */
+body {
   background: #ffffff;
   color: #222;
   font-family: 'Lexend Giga', sans-serif;
   font-weight: 300;
+  margin: 0;
+  padding: 0;
 }
 
-
-.wrapper{
-  /*width: 1280px;*/
+.wrapper {
   margin: 50px 10px;
 }
 
-/* Контейнер для названия и иконок */
-header > div:first-child {
-  display: flex;
-  justify-content: space-between; /* Растягиваем на всю ширину */
-  align-items: center;
-  padding: 15px 5%; /* Отступы по бокам (можно заменить на фиксированные px) */
-  position: relative; /* Для центрирования названия */
+/* Стили шапки */
+header {
+  position: relative;
 }
 
-/* Название магазина */
+
+/* Верхняя часть шапки (название + иконки) */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 5%;
+  position: relative;
+  min-height: 80px; /* Фиксированная высота для шапки */
+}
+
+/* Стили для названия магазина */
+.shop-link {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-decoration: none;
+}
+
 .shop_name {
   font-family: 'Lexend Giga', sans-serif;
   font-weight: 600;
   font-size: 40px;
   color: #ff00aa;
-  position: absolute; /* Вынимаем из потока */
-  left: 50%; /* Сдвигаем в центр */
-  transform: translateX(-50%); /* Точное центрирование */
+  margin: 0;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-/* Список иконок */
+/* Стили для иконок в шапке */
 .header_tabs {
   display: flex;
   list-style: none;
   padding: 0;
   margin: 0;
-  gap: 25px; /* Расстояние между иконками */
-  margin-left: auto; /* Прижимаем вправо */
+  gap: 25px;
+  margin-left: auto;
+  align-items: center;
 }
 
-/* Стили для иконок (без изменений) */
-.header_tabs li {
-  cursor: pointer;
+/*.header_tabs li {*/
+/*  cursor: pointer;*/
+/*}*/
+
+/*.header_tabs li a {*/
+/*  display: flex;*/
+/*  align-items: center;*/
+/*}*/
+
+/*.header_tabs li path {*/
+/*  transition: fill 0.3s ease;*/
+/*  fill: #212529;*/
+/*}*/
+
+/*.header_tabs li:hover path {*/
+/*  fill: #ff00aa;*/
+/*}*/
+
+/* Стили для иконок */
+.header-icon {
+  transition: filter 0.3s ease;
+  filter: brightness(0) saturate(100%) invert(8%) sepia(10%) saturate(1922%) hue-rotate(160deg) brightness(93%) contrast(95%);
 }
 
-.header_tabs li path {
-  transition: fill 0.5s ease;
+.icon-item:hover .header-icon,
+.icon-link:hover .header-icon {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(96%) saturate(4233%) hue-rotate(310deg) brightness(100%) contrast(101%);
 }
 
-.header_tabs li:hover path {
-  fill: #ff00aa;
+
+
+/* Центрирование всего навбара */
+.navbar-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    background: #fff; /* или ваш цвет фона */
+    padding: 0 20px;
 }
 
-/* Баннер (без изменений) */
+/* Стили для выпадающего меню */
+.dropdown-menu {
+    display: inline-block;
+    position: relative;
+    max-width: 1200px; /* или нужная вам максимальная ширина */
+    width: 100%;
+}
+
+.categories {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    list-style: none;
+    padding: 0;
+    margin: 0 auto;
+    width: fit-content;
+}
+
+/* Остальные стили остаются без изменений */
+.category {
+    position: relative;
+    text-align: center;
+}
+
+
+/*!* Стили для dropdown-меню *!*/
+/*.dropdown-menu {*/
+/*  background: #fff;*/
+/*  width: 100%;*/
+/*  padding: 15px 0;*/
+/*  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);*/
+/*  z-index: 50;*/
+/*  position: relative;*/
+/*}*/
+
+
+/*.categories {*/
+/*    display: flex;*/
+/*    gap: 20px;*/
+/*    list-style: none;*/
+/*    padding: 0;*/
+/*    margin: 0;*/
+/*}*/
+
+/*.category {*/
+/*    position: relative;*/
+/*}*/
+
+.category-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 15px;
+    text-decoration: none;
+    color: #333;
+}
+
+.has-children {
+    display: inline-flex;
+    transition: transform 0.2s;
+}
+
+.category:hover .has-children {
+    transform: rotate(90deg);
+}
+
+/* Контейнер подкатегорий */
+.subcategories-container {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 400px;
+    background: white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    z-index: 100;
+    padding: 15px;
+    display: none;
+}
+
+.category:hover .subcategories-container {
+    display: block;
+}
+
+/* Подкатегории первого уровня */
+.subcategories-level1 {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.subcategory1-item {
+    margin-bottom: 10px;
+}
+
+.subcategory1-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.subcategory1-link {
+    font-weight: bold;
+    color: #222;
+    text-decoration: none;
+}
+
+/* Подкатегории второго уровня */
+.subcategories-level2 {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0 15px;
+}
+
+.subcategories-level2 li {
+    margin-bottom: 5px;
+}
+
+.subcategories-level2 a {
+    color: #555;
+    text-decoration: none;
+    font-size: 0.9em;
+}
+
+.subcategories-level2 a:hover {
+    color: #000;
+    text-decoration: underline;
+}
+
+/* Анимация для подкатегорий */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Стили для баннера */
 .banner {
-  background: url('./img/bannerpic_3.1.jpg') no-repeat center center;
+  background: url('img/bannerpic.jpg') no-repeat center center;
   background-size: cover;
   width: 100%;
   height: 30px;
+  margin-top: 0;
 }
 
-footer{
+
+
+/* Стили для подвала */
+footer {
   background-color: #10000d;
   color: white;
-  padding: 10px;
-  margin: 0px;
+  padding: 20px 10px;
+  margin: 0;
   width: 100%;
+  text-align: center;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .header-top {
+    flex-direction: column;
+    padding: 15px 20px;
+  }
+
+  .shop-link {
+    position: static;
+    transform: none;
+    margin-bottom: 15px;
+  }
+
+  .header_tabs {
+    margin-left: 0;
+  }
+
+  .categories {
+    flex-direction: column;
+    gap: 0;
+    align-items: center;
+  }
+
+  .category {
+    width: 100%;
+    text-align: center;
+  }
+
+  .subcategories {
+    position: static;
+    box-shadow: none;
+    width: 100%;
+  }
 }

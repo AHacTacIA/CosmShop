@@ -131,6 +131,13 @@ class CategoryViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+    @action(detail=False, methods=['get'])
+    def parents(self, request):
+        parents = Category.objects.filter(parent__isnull=True)
+        serializer = self.get_serializer(parents, many=True)
+        return Response(serializer.data)
+
+
 class ProductViewSet(viewsets.ModelViewSet):
     """
         API endpoint для управления товарами.
