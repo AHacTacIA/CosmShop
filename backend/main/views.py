@@ -1,12 +1,13 @@
 from django_filters import NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
-from rest_framework import filters, viewsets, permissions, status
+from rest_framework import filters, viewsets, permissions, status, generics
 # from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Profile, Brand, Category, Product, ProductImg, ProductVar, Review, Cart, CartItem, Order, OrderItem
 from .serializers import (
@@ -15,7 +16,7 @@ from .serializers import (
     ProductImgSerializer, ProductVarSerializer,
     ReviewSerializer, CartSerializer,
     CartItemSerializer, OrderSerializer,
-    OrderItemSerializer
+    OrderItemSerializer, UserRegistrationSerializer
 )
 from .permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly
 
@@ -93,6 +94,36 @@ class ProfileViewSet(viewsets.ModelViewSet):
         profile = get_object_or_404(Profile, user=request.user)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
+
+
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = UserRegistrationSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # Получаем профиль для включения в ответ
+        profile = user.profile
+        profile_serializer = ProfileSerializer(profile)
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            },
+            'profile': profile_serializer.data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        })
 
 
 class BrandViewSet(viewsets.ModelViewSet):

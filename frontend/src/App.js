@@ -8,7 +8,7 @@ import {Accountpage} from "./pages/AccountPage";
 import {Cartpage} from "./pages/CartPage";
 import {Loginpage} from "./pages/LoginPage";
 import {Orderspage} from "./pages/OrdersPage";
-import {Registrationpage} from "./pages/RegistrationPage";
+import {RegisterForm} from "./pages/RegistrationPage";
 import {WishListpage} from "./pages/WishListPage";
 
 
@@ -21,7 +21,7 @@ export default function App() {
               <Routes>
                   <Route path="/" element={<Homepage />} />
                   <Route path="/login" element={<Loginpage />} />
-                  <Route path="/register" element={<Registrationpage />} />
+                  <Route path="/register" element={<RegisterForm />} />
                   <Route path="/cart" element={< Cartpage/>} />
                   <Route path="/orders" element={<Orderspage />} />
                   <Route path="/wishlist" element={<WishListpage />} />

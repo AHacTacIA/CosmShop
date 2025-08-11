@@ -40,7 +40,7 @@ export default function Header(){
 
                     </li>
                     <li className="icon-item">
-                        <Link to="/account" className="icon-link">
+                        <Link to="/register" className="icon-link">
                             <img
                                 src={personIcon}
                                 alt="Search"

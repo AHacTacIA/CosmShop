@@ -1,13 +1,52 @@
 from django.db import transaction
 from rest_framework import serializers
 from .models import Profile, Brand, Category, Product, ProductImg, ProductVar, Review, Cart, CartItem, Order, OrderItem
+from .models import User
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'phone_number', 'address', 'birth_date']
+        fields = ['id', 'phone_number', 'address', 'birth_date']
+        extra_kwargs = {
+            'phone_number': {'required': False},
+            'address': {'required': False},
+            'birth_date': {'required': False}
+        }
 
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(required=False)
+    password = serializers.CharField(write_only=True, required=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'first_name', 'last_name', 'profile']
+        extra_kwargs = {
+            'email': {'required': True},
+            'username': {'required': True}
+        }
+
+    def create(self, validated_data):
+        profile_data = validated_data.pop('profile', None)
+
+        # Создаем пользователя
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', '')
+        )
+
+        # Создаем профиль только если есть данные
+        if profile_data:
+            Profile.objects.create(user=user, **profile_data)
+        else:
+            # Создаем пустой профиль, если данных нет
+            Profile.objects.create(user=user)
+
+        return user
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
