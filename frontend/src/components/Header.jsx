@@ -6,8 +6,12 @@ import searchIcon from '../img/search.svg'
 import heartIcon from '../img/heart.svg'
 import personIcon from '../img/person.svg'
 import handbagIcon from '../img/handbag.svg'
+import apiClient from "../api/client";
 
 export default function Header(){
+    const isAuthenticated = apiClient.auth.isAuthenticated();
+    const currentUser = apiClient.auth.getCurrentUser();
+
     return(
         <header>
             <div className="header-top">
@@ -40,16 +44,24 @@ export default function Header(){
 
                     </li>
                     <li className="icon-item">
-                        <Link to="/register" className="icon-link">
+                        {/* Динамическая ссылка в зависимости от авторизации */}
+                        <Link
+                            to={isAuthenticated ? "/profile" : "/login"}
+                            className="icon-link"
+                            title={isAuthenticated ? "Профиль" : "Войти"}
+                        >
                             <img
                                 src={personIcon}
-                                alt="Search"
+                                alt={isAuthenticated ? "Профиль" : "Войти"}
                                 width="25"
                                 height="25"
                                 className="header-icon"
                             />
+                            {/* Можно добавить индикатор авторизации */}
+                            {isAuthenticated && (
+                                <span className="auth-indicator"></span>
+                            )}
                         </Link>
-
                     </li>
                     <li className="icon-item">
                         <Link to="/cart" className="icon-link">

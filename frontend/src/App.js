@@ -4,7 +4,7 @@ import Footer from "./components/Footer";
 
 import { Homepage } from "./pages/HomePage"
 import {Notfoundpage} from "./pages/NotFoundPage";
-import {Accountpage} from "./pages/AccountPage";
+import {ProfilePage} from "./pages/ProfilePage";
 import {Cartpage} from "./pages/CartPage";
 import {Loginpage} from "./pages/LoginPage";
 import {Orderspage} from "./pages/OrdersPage";
@@ -22,10 +22,11 @@ export default function App() {
                   <Route path="/" element={<Homepage />} />
                   <Route path="/login" element={<Loginpage />} />
                   <Route path="/register" element={<RegisterForm />} />
+        <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/cart" element={< Cartpage/>} />
                   <Route path="/orders" element={<Orderspage />} />
                   <Route path="/wishlist" element={<WishListpage />} />
-                  <Route path="/account" element={<Accountpage />} />
+                  <Route path="/account" element={<ProfilePage />} />
                   <Route path="*" element={<Notfoundpage />} />
               </Routes>
 
