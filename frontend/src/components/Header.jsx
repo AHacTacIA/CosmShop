@@ -6,11 +6,15 @@ import searchIcon from '../img/search.svg'
 import heartIcon from '../img/heart.svg'
 import personIcon from '../img/person.svg'
 import handbagIcon from '../img/handbag.svg'
-import apiClient from "../api/client";
+// import apiClient from "../api/client";
+import {useAuth} from "../context/AuthContext";
+// import {useAuth} from "../context/AuthContext";
 
 export default function Header(){
-    const isAuthenticated = apiClient.auth.isAuthenticated();
-    const currentUser = apiClient.auth.getCurrentUser();
+    // const { isAuthenticated, currentUser, logout } = useAuth();
+    // const isAuthenticated = apiClient.auth.isAuthenticated()
+    const { isAuthenticated } = useAuth();
+    console.log("isAuthenticated",isAuthenticated)
 
     return(
         <header>
@@ -31,6 +35,7 @@ export default function Header(){
 
 
                     </li>
+
                     <li className="icon-item">
                         <Link to="/wishlist" className="icon-link">
                             <img
@@ -43,8 +48,8 @@ export default function Header(){
                         </Link>
 
                     </li>
+
                     <li className="icon-item">
-                        {/* Динамическая ссылка в зависимости от авторизации */}
                         <Link
                             to={isAuthenticated ? "/profile" : "/login"}
                             className="icon-link"
@@ -57,12 +62,12 @@ export default function Header(){
                                 height="25"
                                 className="header-icon"
                             />
-                            {/* Можно добавить индикатор авторизации */}
                             {isAuthenticated && (
                                 <span className="auth-indicator"></span>
                             )}
                         </Link>
                     </li>
+
                     <li className="icon-item">
                         <Link to="/cart" className="icon-link">
                             <img

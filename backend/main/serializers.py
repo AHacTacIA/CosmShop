@@ -8,6 +8,11 @@ from .models import User
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+
     phone_number = serializers.CharField(
         required=False,
         validators=[
@@ -26,7 +31,16 @@ class ProfileSerializer(serializers.ModelSerializer):
         #     'address': {'required': False},
         #     'birth_date': {'required': False}
         # }
-        fields = ['phone_number', 'address', 'birth_date']
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'phone_number',
+            'address',
+            'birth_date'
+        ]
         extra_kwargs = {
             'birth_date': {
                 'error_messages': {
@@ -186,9 +200,23 @@ class ProductImgSerializer(serializers.ModelSerializer):
         model = ProductImg
         fields = ['image', 'is_main']
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        if representation.get('image'):
+            # Просто убираем домен и исправляем кодировку
+            url = representation['image']
+            url = url.replace('E%3A', 'E:')
+            url = url.replace('http://localhost:8000/', '')
+            representation['image'] = url
+
+        return representation
+
     def to_internal_value(self, data):
         # Преобразуем путь в файл
         return {'image': data['image'], 'is_main': data['is_main']}
+
+
 
 class ProductVarSerializer(serializers.ModelSerializer):
     # images = serializers.SerializerMethodField(many=True)

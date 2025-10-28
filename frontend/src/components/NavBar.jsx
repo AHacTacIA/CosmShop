@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { categoryService } from "../api/categories";
 import '../index.css';
 import { ChevronRight } from "react-feather";
+import {Link} from "react-router-dom";
 
 export default function NavBar() {
     const [parentCategories, setParentCategories] = useState([]);
@@ -85,8 +86,7 @@ export default function NavBar() {
                             onMouseEnter={() => handleCategoryHover(category.id)}
                             onMouseLeave={() => setHoveredCategory(null)}
                         >
-                            <a
-                                href={`/category/${category.slug}`}
+                            <Link to={`/category/${category.slug}`}
                                 className="category-link"
                             >
                                 {category.name}
@@ -95,7 +95,7 @@ export default function NavBar() {
                                     <ChevronRight size={16}/>
                                 </span>
                                 )}
-                            </a>
+                            </Link>
 
                             {category.children && hoveredCategory === category.id && (
                                 <div className="subcategories-container">
@@ -103,10 +103,11 @@ export default function NavBar() {
                                         {category.children.map(subcategory1 => (
                                             <li key={subcategory1.id} className="subcategory1-item">
                                                 <div className="subcategory1-header">
-                                                    <a href={`/category/${subcategory1.slug}`}
+                                                    <Link to={`/category/${subcategory1.slug}`}
                                                        className="subcategory1-link">
+
                                                         {subcategory1.name}
-                                                    </a>
+                                                    </Link>
                                                     {subcategory1.children?.length > 0 && (
                                                         <span className="has-children">
                                                         <ChevronRight size={14}/>
@@ -118,9 +119,9 @@ export default function NavBar() {
                                                     <ul className="subcategories-level2">
                                                         {subcategory1.children.map(subcategory2 => (
                                                             <li key={subcategory2.id}>
-                                                                <a href={`/category/${subcategory2.slug}`}>
+                                                                <Link to={`/category/${subcategory2.slug}`}>
                                                                     {subcategory2.name}
-                                                                </a>
+                                                                </Link>
                                                             </li>
                                                         ))}
                                                     </ul>

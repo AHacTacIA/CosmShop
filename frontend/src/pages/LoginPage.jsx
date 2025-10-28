@@ -183,14 +183,14 @@ const Loginpage = () => {
 
         .auth-form input:focus {
           outline: none;
-          border-color: #4CAF50;
-          box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+          border-color: #ff00aa;
+          box-shadow: 0 0 0 2px rgba(255, 0, 170, 0.2);
         }
 
         .auth-form button {
           width: 100%;
           padding: 12px;
-          background: #4CAF50;
+          background: #ff00aa;
           color: white;
           border: none;
           border-radius: 4px;
@@ -201,7 +201,7 @@ const Loginpage = () => {
         }
 
         .auth-form button:hover:not(:disabled) {
-          background: #45a049;
+          background: #cc0088;
         }
 
         .auth-form button:disabled {
@@ -220,7 +220,7 @@ const Loginpage = () => {
         }
 
         .auth-links a {
-          color: #4CAF50;
+          color: #ff00aa;
           text-decoration: none;
         }
 

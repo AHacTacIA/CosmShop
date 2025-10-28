@@ -134,7 +134,7 @@ class Profile(models.Model):
     birth_date = models.DateField(null=True, blank=True, verbose_name='Дата рождения')
 
     def __str__(self):
-        return self.username
+        return self.user.username
 
     class Meta:
         verbose_name = 'Профиль'
