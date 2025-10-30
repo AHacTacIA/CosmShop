@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { productService } from '../api/products';
 import { categoryService } from '../api/categories';
-import ProductCard from '../components/ProductCard'; // Импортируем внешний компонент
+import ProductCard from '../components/ProductCard';
 import './CatalogPage.css';
 
 const CatalogPage = () => {
@@ -11,6 +11,7 @@ const CatalogPage = () => {
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [category, setCategory] = useState(null);
+  const [allCategories, setAllCategories] = useState([]); // Все категории для поиска
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
@@ -20,21 +21,73 @@ const CatalogPage = () => {
     search: searchParams.get('search') || ''
   });
 
+  // Загрузка всех категорий при монтировании
+  useEffect(() => {
+    const loadAllCategories = async () => {
+      try {
+        const response = await categoryService.getAllCategories();
+        setAllCategories(response.data);
+      } catch (err) {
+        console.error('Error loading categories:', err);
+      }
+    };
+    loadAllCategories();
+  }, []);
+
+  // Рекурсивная функция для получения всех дочерних категорий
+  const getAllChildCategories = (categoryId) => {
+    const childCategories = [];
+
+    const findChildren = (parentId) => {
+      const children = allCategories.filter(cat => cat.parent === parentId);
+      children.forEach(child => {
+        childCategories.push(child.id);
+        findChildren(child.id); // Рекурсивно ищем детей детей
+      });
+    };
+
+    findChildren(categoryId);
+    return childCategories;
+  };
+
   // Функция для получения категории по slug
-  const getCategoryBySlug = async (slug) => {
-    try {
-      const response = await categoryService.getAllCategories();
-      const categories = response.data;
-      return categories.find(cat => cat.slug === slug) || null;
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-      return null;
+  const getCategoryBySlug = (slug) => {
+    return allCategories.find(cat => cat.slug === slug) || null;
+  };
+
+  // Загрузка продуктов для списка категорий
+  const loadProductsForCategories = async (categoryIds) => {
+    const allProducts = [];
+
+    // Делаем запросы для каждой категории отдельно
+    for (const categoryId of categoryIds) {
+      try {
+        const productsResponse = await productService.getProducts({
+          category: categoryId,
+          brand: filters.brand,
+          min_price: filters.minPrice,
+          max_price: filters.maxPrice,
+          search: filters.search
+        });
+        allProducts.push(...productsResponse.data);
+      } catch (err) {
+        console.error(`Error loading products for category ${categoryId}:`, err);
+      }
     }
+
+    // Удаляем дубликаты по ID
+    const uniqueProducts = allProducts.filter((product, index, self) =>
+      index === self.findIndex(p => p.id === product.id)
+    );
+
+    return uniqueProducts;
   };
 
   // Загрузка данных при изменении категории или фильтров
   useEffect(() => {
     const loadCatalogData = async () => {
+      if (allCategories.length === 0) return; // Ждем загрузки категорий
+
       try {
         setLoading(true);
 
@@ -42,25 +95,23 @@ const CatalogPage = () => {
         let productsData = [];
 
         if (categorySlug) {
-          categoryData = await getCategoryBySlug(categorySlug);
+          categoryData = getCategoryBySlug(categorySlug);
 
           if (categoryData) {
             setCategory(categoryData);
 
-            const productsResponse = await productService.getProducts({
-              category: categoryData.id,
-              brand: filters.brand,
-              min_price: filters.minPrice,
-              max_price: filters.maxPrice,
-              search: filters.search
-            });
-            productsData = productsResponse.data;
+            // Получаем все подкатегории (включая текущую)
+            const allCategoryIds = [categoryData.id, ...getAllChildCategories(categoryData.id)];
+            console.log('Loading products for categories:', allCategoryIds);
+
+            productsData = await loadProductsForCategories(allCategoryIds);
           } else {
             setError(`Категория "${categorySlug}" не найдена`);
             setLoading(false);
             return;
           }
         } else {
+          // Загружаем все товары (если нет конкретной категории)
           const productsResponse = await productService.getProducts({
             brand: filters.brand,
             min_price: filters.minPrice,
@@ -81,7 +132,7 @@ const CatalogPage = () => {
     };
 
     loadCatalogData();
-  }, [categorySlug, filters]);
+  }, [categorySlug, filters, allCategories]); // Добавили allCategories в зависимости
 
   // Обработчик изменения фильтров
   const handleFilterChange = (filterName, value) => {
@@ -100,6 +151,18 @@ const CatalogPage = () => {
       search: ''
     });
   };
+
+  // Показываем загрузку если категории еще не загружены
+  if (allCategories.length === 0) {
+    return (
+      <div className="catalog-container">
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Загрузка категорий...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -132,6 +195,10 @@ const CatalogPage = () => {
         </h1>
         {category?.description && (
           <p className="category-description">{category.description}</p>
+        )}
+        {category && (
+          <p className="category-info">
+          </p>
         )}
       </div>
 

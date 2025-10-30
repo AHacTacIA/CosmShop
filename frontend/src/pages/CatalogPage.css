@@ -497,3 +497,24 @@
     padding: 0.2rem 0.4rem;
   }
 }
+
+/* Добавьте в CatalogPage.css */
+.category-info {
+  color: #666;
+  font-style: italic;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.products-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  color: #666;
+}
+
+.category-stats {
+  font-size: 0.9rem;
+  color: #888;
+}

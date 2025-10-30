@@ -42,6 +42,7 @@ const ProductCard = ({ product }) => {
 
   // Функции getMainImage, renderBrand, renderPrice остаются без изменений
   const getMainImage = () => {
+    // console.log(product.id)
     // console.log(product.variants[0].images[0].image)
     if (product.variants[0].images && product.variants[0].images.length > 0) {
       const mainImage = product.variants[0].images.find(img => img.is_main);
