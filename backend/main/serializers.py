@@ -1,3 +1,4 @@
+import os
 from datetime import date
 from django.contrib.auth.password_validation import validate_password
 from django.core.validators import RegexValidator
@@ -5,6 +6,7 @@ from django.db import transaction
 from rest_framework import serializers
 from .models import Profile, Brand, Category, Product, ProductImg, ProductVar, Review, Cart, CartItem, Order, OrderItem
 from .models import User
+from urllib.parse import unquote
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -12,6 +14,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
+    favorites_count = serializers.SerializerMethodField()
+    favorites_preview = serializers.SerializerMethodField()
 
     phone_number = serializers.CharField(
         required=False,
@@ -39,7 +43,9 @@ class ProfileSerializer(serializers.ModelSerializer):
             'last_name',
             'phone_number',
             'address',
-            'birth_date'
+            'birth_date',
+            'favorites_count',
+            'favorites_preview'
         ]
         extra_kwargs = {
             'birth_date': {
@@ -48,6 +54,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                 }
             }
         }
+        read_only_fields = ['user', 'favorites_count', 'favorites_preview']
 
 
 
@@ -60,6 +67,16 @@ class ProfileSerializer(serializers.ModelSerializer):
             if age < 13:
                 raise serializers.ValidationError("Пользователь должен быть старше 13 лет")
             return value
+
+    def get_favorites_count(self, obj):
+        """Возвращает количество избранных товаров"""
+        return obj.favorites.count()
+
+    def get_favorites_preview(self, obj):
+        """Возвращает превью избранных товаров (первые 3)"""
+        favorites = obj.favorites.all()[:3]  # Берем только первые 3
+        from .serializers import ProductSerializer
+        return ProductSerializer(favorites, many=True, context=self.context).data
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -148,10 +165,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         return user
 
-class FavoriteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Profile
-        fields = ['favorites']
+# class FavoriteSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Profile
+#         fields = ['favorites']
 
 
 class BrandSerializer(serializers.ModelSerializer):
@@ -204,13 +221,28 @@ class ProductImgSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
 
         if representation.get('image'):
-            # Просто убираем домен и исправляем кодировку
-            url = representation['image']
-            url = url.replace('E%3A', 'E:')
-            url = url.replace('http://localhost:8000/', '')
-            representation['image'] = url
+            original_url = representation['image']
+
+            try:
+                # Декодируем URL
+                from urllib.parse import unquote
+                decoded_url = unquote(original_url)
+
+                # Извлекаем только имя файла
+                import os
+                filename = os.path.basename(decoded_url)
+
+                # Создаем абсолютный веб-URL
+                correct_url = f"http://127.0.0.1:8000/media/products/{filename}"
+                representation['image'] = correct_url
+
+            except Exception as e:
+                print(f"Error processing image: {e}")
+                # Fallback с абсолютным URL
+                representation['image'] = "http://127.0.0.1:8000/media/placeholder.jpg"
 
         return representation
+
 
     def to_internal_value(self, data):
         # Преобразуем путь в файл

@@ -1,2 +1,4 @@
 /.idea
 /.venv
+/backend/media/
+/frontend/src/img/

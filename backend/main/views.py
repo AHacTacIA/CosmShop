@@ -8,6 +8,12 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.pagination import PageNumberPagination
+
+class FavoritePagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 from .models import Profile, Brand, Category, Product, ProductImg, ProductVar, Review, Cart, CartItem, Order, OrderItem
 from .serializers import (
@@ -94,6 +100,34 @@ class ProfileViewSet(viewsets.ModelViewSet):
         profile = get_object_or_404(Profile, user=request.user)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='me/favorites', pagination_class=FavoritePagination)
+    def my_favorites(self, request):
+        """Получение списка избранных товаров текущего пользователя с пагинацией"""
+        try:
+            profile = request.user.profile
+            favorites = profile.favorites.all().order_by('-id')  # Сортировка по новым первым
+
+            # Пагинируем queryset
+            page = self.paginate_queryset(favorites)
+            if page is not None:
+                from .serializers import ProductSerializer
+                serializer = ProductSerializer(page, many=True, context={'request': request})
+                return self.get_paginated_response(serializer.data)
+
+            # Если пагинация отключена
+            from .serializers import ProductSerializer
+            serializer = ProductSerializer(favorites, many=True, context={'request': request})
+            return Response({
+                'count': favorites.count(),
+                'results': serializer.data
+            })
+
+        except Profile.DoesNotExist:
+            return Response(
+                {'error': 'Профиль не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class RegisterView(generics.CreateAPIView):
@@ -184,6 +218,15 @@ class ProductViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ProductFilter
     search_fields = ['name', 'description']
+
+    def get_permissions(self):
+        """
+        Переопределяем permissions для разных actions
+        """
+        if self.action in ['favorite', 'unfavorite']:
+            # Для избранного разрешаем авторизованным пользователям
+            return [permissions.IsAuthenticated()]
+        return [IsAdminOrReadOnly()]
 
     @action(detail=False, methods=['get'], url_path='search')
     def search_products(self, request):

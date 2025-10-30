@@ -1,4 +1,4 @@
-import {Routes, Route, Link} from "react-router-dom";
+import {Routes, Route} from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import {AuthProvider} from "./context/AuthContext";
@@ -10,7 +10,7 @@ import {Cartpage} from "./pages/CartPage";
 import {Loginpage} from "./pages/LoginPage";
 import {Orderspage} from "./pages/OrdersPage";
 import {RegisterForm} from "./pages/RegistrationPage";
-import {WishListpage} from "./pages/WishListPage";
+import {WishListPage} from "./pages/WishListPage";
 import CatalogPage from "./pages/CatalogPage";
 
 
@@ -28,7 +28,7 @@ export default function App() {
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/cart" element={< Cartpage/>} />
                   <Route path="/orders" element={<Orderspage />} />
-                  <Route path="/wishlist" element={<WishListpage />} />
+                  <Route path="/wishlist" element={<WishListPage />} />
                   <Route path="/account" element={<ProfilePage />} />
                   <Route path="/category/:categorySlug" element={<CatalogPage />} />
                   <Route path="*" element={<Notfoundpage />} />

@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from django.utils.text import slugify
 
 
+
 class Brand(models.Model):
     name = models.CharField(max_length=150, verbose_name='Название бренда')
     slug = models.SlugField(max_length=100, unique=True)

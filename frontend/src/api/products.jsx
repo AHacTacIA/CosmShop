@@ -1,23 +1,23 @@
 import apiClient from "./client";
 
-export const productService ={
+export const productService = {
   // Получение списка продуктов с фильтрацией
-    getProducts : (params ={}) =>{
-        return apiClient.get('/products/',{
-            params : {
-                brand: params.brand,
-                category: params.category,
-                max_price: params.maxPrice,
-                min_price: params.minPrice,
-                search: params.search,
-            }
-        });
-    },
+  getProducts: (params = {}) => {
+    return apiClient.get('/products/', {
+      params: {
+        brand: params.brand,
+        category: params.category,
+        max_price: params.maxPrice,
+        min_price: params.minPrice,
+        search: params.search,
+      }
+    });
+  },
 
   // Получение конкретного продукта по ID
-    getProduct : (id)=>{
-        return apiClient.get(`/products/${id}/`);
-    },
+  getProduct: (id) => {
+    return apiClient.get(`/products/${id}/`);
+  },
 
   // Поиск продуктов
   searchProducts: (query) => {
@@ -74,11 +74,41 @@ export const productService ={
     return apiClient.delete(`/products/${productId}/unfavorite/`);
   },
 
-  // Получение списка избранных продуктов (через профиль пользователя)
+  // Получение списка избранных продуктов
   getFavorites: () => {
-    return apiClient.get('/profiles/me/').then(response => {
-      // Предполагаем, что в профиле есть информация об избранных продуктах
-      return response.data.favorites || [];
+    return apiClient.get('/profiles/me/favorites/').then(response => {
+      return response.data.results || [];
     });
+  },
+
+  // Альтернативный вариант с пагинацией
+  getFavoritesPaginated: (page = 1, pageSize = 20) => {
+    return apiClient.get('/profiles/me/favorites/', {
+      params: { page, page_size: pageSize }
+    });
+  },
+
+  // Проверка, находится ли продукт в избранном
+  checkIsFavorite: async (productId) => {
+    try {
+      const response = await apiClient.get('/profiles/me/');
+      const favorites = response.data.favorites || [];
+      return favorites.some(fav => fav.id === productId);
+    } catch (error) {
+      console.error('Error checking favorite status:', error);
+      return false;
+    }
+  },
+
+  // Получение списка ID избранных продуктов
+  getFavoriteIds: async () => {
+    try {
+      const response = await apiClient.get('/profiles/me/');
+      const favorites = response.data.favorites || [];
+      return favorites.map(fav => fav.id);
+    } catch (error) {
+      console.error('Error getting favorite IDs:', error);
+      return [];
+    }
   }
 };

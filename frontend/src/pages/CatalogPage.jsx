@@ -1,7 +1,9 @@
+// pages/CatalogPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { productService } from '../api/products';
 import { categoryService } from '../api/categories';
+import ProductCard from '../components/ProductCard'; // Импортируем внешний компонент
 import './CatalogPage.css';
 
 const CatalogPage = () => {
@@ -205,142 +207,6 @@ const CatalogPage = () => {
             </div>
           )}
         </main>
-      </div>
-    </div>
-  );
-};
-
-// Компонент карточки товара
-const ProductCard = ({ product }) => {
-  const navigateToProduct = () => {
-    window.location.href = `/product/${product.id}`;
-  };
-
-  const handleAddToCart = (e) => {
-    e.stopPropagation();
-    console.log('Add to cart:', product.id);
-  };
-
-  const handleAddToWishlist = (e) => {
-    e.stopPropagation();
-    console.log('Add to wishlist:', product.id);
-  };
-
-  // Функция для получения основного изображения
-  const getMainImage = () => {
-    console.log(product.variants[0].images[0]);
-    if (product.variants[0].images && product.variants[0].images.length > 0) {
-      const mainImage = product.variants[0].images.find(img => img.is_main);
-
-      return mainImage ? mainImage.image : product.variants[0].images[0].image;
-    }
-
-    if (product.image) {
-      return product.image;
-    }
-
-    return null;
-  };
-
-  // Функция для безопасного отображения бренда
-  const renderBrand = () => {
-    if (!product.brand) return null;
-
-    if (typeof product.brand === 'object' && product.brand !== null) {
-      return (
-        <p className="product-brand">
-          {product.brand.name || 'Бренд не указан'}
-          {product.brand.country && (
-            <span className="brand-country"> • {product.brand.country}</span>
-          )}
-        </p>
-      );
-    }
-
-    if (typeof product.brand === 'string') {
-      return <p className="product-brand">{product.brand}</p>;
-    }
-
-    return null;
-  };
-
-  // Функция для безопасного отображения цены в BYN
-  const renderPrice = () => {
-    if (product.price) {
-      return `${product.price} BYN`;
-    }
-
-    if (product.variants && product.variants.length > 0) {
-      const prices = product.variants.map(v => v.price).filter(p => p);
-      if (prices.length > 0) {
-        const minPrice = Math.min(...prices);
-        const maxPrice = Math.max(...prices);
-        return minPrice === maxPrice
-          ? `${minPrice} BYN`
-          : `от ${minPrice} BYN`;
-      }
-    }
-
-    return 'Цена не указана';
-  };
-
-  // Функция для подсчета количества изображений
-  const getImageCount = () => {
-    if (product.images && product.images.length > 0) {
-      return product.images.length;
-    }
-    return product.image ? 1 : 0;
-  };
-
-  return (
-    <div className="product-card" onClick={navigateToProduct}>
-      <div className="product-image">
-        {getMainImage() ? (
-          <>
-            <img src={getMainImage()} alt={product.name} />
-            {getImageCount() > 1 && (
-              <div className="image-counter">
-                +{getImageCount() - 1}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="no-image">Нет изображения</div>
-        )}
-
-        <button
-          className="wishlist-btn"
-          onClick={handleAddToWishlist}
-          title="Добавить в избранное"
-        >
-          ♡
-        </button>
-      </div>
-
-      <div className="product-info">
-        <h3 className="product-name">{product.name}</h3>
-
-        {renderBrand()}
-
-        <p className="product-price">
-          {renderPrice()}
-        </p>
-
-        {product.description && (
-          <p className="product-description">
-            {product.description.length > 100
-              ? `${product.description.substring(0, 100)}...`
-              : product.description
-            }
-          </p>
-        )}
-
-        <button
-          className="add-to-cart-btn"
-          onClick={handleAddToCart}
-        >
-          В корзину
-        </button>
       </div>
     </div>
   );
