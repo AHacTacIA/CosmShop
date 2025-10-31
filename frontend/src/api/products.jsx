@@ -1,7 +1,7 @@
 import apiClient from "./client";
 
 export const productService = {
-  // Получение списка продуктов с фильтрацией
+  // Получение списка продуктов с фильтрацией (серверная фильтрация)
   getProducts: (params = {}) => {
     return apiClient.get('/products/', {
       params: {
@@ -10,43 +10,51 @@ export const productService = {
         max_price: params.maxPrice,
         min_price: params.minPrice,
         search: params.search,
+        // Убираем пагинационные параметры из запроса фильтрации
       }
     });
   },
 
-  // Получение конкретного продукта по ID
+  // Получение отфильтрованных продуктов с сервера
+  getFilteredProducts: (filters = {}) => {
+    return apiClient.get('/products/', {
+      params: {
+        brand: filters.brand,
+        category: filters.category,
+        max_price: filters.maxPrice,
+        min_price: filters.minPrice,
+        search: filters.search,
+      }
+    });
+  },
+
+  // Остальные методы остаются без изменений
   getProduct: (id) => {
     return apiClient.get(`/products/${id}/`);
   },
 
-  // Поиск продуктов
   searchProducts: (query) => {
     return apiClient.get('/products/search/', {
       params: { search: query }
     });
   },
 
-  // Работа с изображениями продукта
   getProductImages: (productId) => {
     return apiClient.get(`/products/${productId}/images/`);
   },
 
-  // Работа с вариантами продукта
   getProductVariants: (productId) => {
     return apiClient.get(`/products/${productId}/variants/`);
   },
 
-  // Получение конкретного варианта
   getVariant: (variantId) => {
     return apiClient.get(`/product-variants/${variantId}/`);
   },
 
-  // Работа с отзывами
   getProductReviews: (productId) => {
     return apiClient.get(`/products/${productId}/reviews/`);
   },
 
-  // Создание отзыва
   createReview: (productId, reviewData) => {
     return apiClient.post('/reviews/', {
       product: productId,
@@ -54,41 +62,34 @@ export const productService = {
     });
   },
 
-  // Обновление отзыва
   updateReview: (reviewId, reviewData) => {
     return apiClient.put(`/reviews/${reviewId}/`, reviewData);
   },
 
-  // Удаление отзыва
   deleteReview: (reviewId) => {
     return apiClient.delete(`/reviews/${reviewId}/`);
   },
 
-  // Добавление в избранное
   addToFavorites: (productId) => {
     return apiClient.post(`/products/${productId}/favorite/`);
   },
 
-  // Удаление из избранного
   removeFromFavorites: (productId) => {
     return apiClient.delete(`/products/${productId}/unfavorite/`);
   },
 
-  // Получение списка избранных продуктов
   getFavorites: () => {
     return apiClient.get('/profiles/me/favorites/').then(response => {
       return response.data.results || [];
     });
   },
 
-  // Альтернативный вариант с пагинацией
   getFavoritesPaginated: (page = 1, pageSize = 20) => {
     return apiClient.get('/profiles/me/favorites/', {
       params: { page, page_size: pageSize }
     });
   },
 
-  // Проверка, находится ли продукт в избранном
   checkIsFavorite: async (productId) => {
     try {
       const response = await apiClient.get('/profiles/me/');
@@ -100,7 +101,6 @@ export const productService = {
     }
   },
 
-  // Получение списка ID избранных продуктов
   getFavoriteIds: async () => {
     try {
       const response = await apiClient.get('/profiles/me/');

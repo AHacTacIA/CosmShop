@@ -590,3 +590,184 @@
     font-size: 14px;
   }
 }
+
+.filter-actions {
+  margin: 20px 0;
+  padding-top: 15px;
+  border-top: 1px solid #ff00aa33;
+}
+
+.apply-filters-btn {
+  width: 100%;
+  padding: 12px 20px;
+  background-color: #ff00aa;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.apply-filters-btn:hover:not(:disabled) {
+  background-color: #cc0088;
+  transform: translateY(-1px);
+}
+
+.apply-filters-btn:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.apply-filters-btn.has-changes:not(:disabled) {
+  background-color: #ff00aa;
+  box-shadow: 0 2px 8px rgba(255, 0, 170, 0.3);
+}
+
+.apply-filters-btn.has-changes:not(:disabled):hover {
+  background-color: #cc0088;
+  box-shadow: 0 4px 12px rgba(255, 0, 170, 0.4);
+}
+
+.active-filters {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: rgba(255, 0, 170, 0.05);
+  border-radius: 6px;
+  border-left: 4px solid #ff00aa;
+}
+
+.active-filters h4 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #ff00aa;
+  font-weight: 600;
+}
+
+.active-filters ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.active-filters li {
+  padding: 5px 0;
+  font-size: 13px;
+  color: #666666;
+  border-bottom: 1px solid rgba(255, 0, 170, 0.1);
+}
+
+.active-filters li:last-child {
+  border-bottom: none;
+}
+
+/* Кнопки пагинации */
+.pagination-btn {
+  background-color: white;
+  color: #ff00aa;
+  border: 1px solid #ff00aa;
+  padding: 8px 12px;
+  margin: 0 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pagination-btn:hover {
+  background-color: #ff00aa;
+  color: white;
+}
+
+.pagination-btn.active {
+  background-color: #ff00aa;
+  color: white;
+}
+
+/* Кнопка сброса фильтров */
+.reset-filters-btn {
+  background-color: transparent;
+  color: #ff00aa;
+  border: 1px solid #ff00aa;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.reset-filters-btn:hover {
+  background-color: #ff00aa;
+  color: white;
+}
+
+.reset-filters-inline-btn {
+  background-color: #ff00aa;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.reset-filters-inline-btn:hover {
+  background-color: #cc0088;
+}
+
+/* Заголовки */
+.catalog-header h1 {
+  color: #ff00aa;
+}
+
+/* Поля ввода в фильтрах */
+.filter-group input,
+.filter-group select {
+  border: 1px solid rgba(255, 0, 170, 0.3);
+  border-radius: 4px;
+  padding: 8px 12px;
+  transition: all 0.3s ease;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  outline: none;
+  border-color: #ff00aa;
+  box-shadow: 0 0 0 2px rgba(255, 0, 170, 0.1);
+}
+
+/* Индикатор загрузки */
+.loading-spinner .spinner {
+  border: 3px solid rgba(255, 0, 170, 0.3);
+  border-top: 3px solid #ff00aa;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Сообщение об ошибке */
+.error-message {
+  color: #ff00aa;
+  text-align: center;
+}
+
+.error-message button {
+  background-color: #ff00aa;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.error-message button:hover {
+  background-color: #cc0088;
+}

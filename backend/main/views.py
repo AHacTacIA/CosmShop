@@ -1,3 +1,4 @@
+import django_filters
 from django_filters import NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from rest_framework import filters, viewsets, permissions, status, generics
@@ -65,14 +66,24 @@ class BulkProductViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-class ProductFilter(FilterSet):
-    min_price = NumberFilter(field_name="price", lookup_expr='gte')
-    max_price = NumberFilter(field_name="price", lookup_expr='lte')
+# class ProductFilter(FilterSet):
+#     min_price = NumberFilter(field_name="price", lookup_expr='gte')
+#     max_price = NumberFilter(field_name="price", lookup_expr='lte')
+#
+#     class Meta:
+#         model = Product
+#         fields = ['category', 'brand', 'min_price', 'max_price']
+#
+
+class ProductFilter(django_filters.FilterSet):
+    min_price = django_filters.NumberFilter(field_name='variants__price', lookup_expr='gte')
+    max_price = django_filters.NumberFilter(field_name='variants__price', lookup_expr='lte')
+    brand = django_filters.CharFilter(field_name='brand__name', lookup_expr='icontains')
+    search = django_filters.CharFilter(field_name='name', lookup_expr='icontains')
 
     class Meta:
         model = Product
-        fields = ['category', 'brand', 'min_price', 'max_price']
-
+        fields = ['category', 'brand', 'min_price', 'max_price', 'search']
 
 User = get_user_model()
 
