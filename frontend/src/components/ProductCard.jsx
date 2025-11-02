@@ -1,9 +1,11 @@
 // components/ProductCard.jsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWishlist } from '../hooks/useWishlist';
 import AddToCartButton from './AddToCartButton';
 
 const ProductCard = ({ product }) => {
+  const navigate = useNavigate();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const [isWishlistLoading, setIsWishlistLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(isInWishlist(product.id));
@@ -33,7 +35,7 @@ const ProductCard = ({ product }) => {
   };
 
   const navigateToProduct = () => {
-    window.location.href = `/product/${product.id}`;
+    navigate(`/product/${product.id}`);
   };
 
   const getMainImage = () => {
@@ -104,22 +106,20 @@ const ProductCard = ({ product }) => {
       <div className="product-info">
         <h3 className="product-name">{product.name}</h3>
 
+        {/* Краткое описание под названием */}
+        {product.sh_descr && (
+          <p className="product-short-description">
+            {product.sh_descr}
+          </p>
+        )}
+
         {renderBrand()}
 
         <p className="product-price">
           {renderPrice()}
         </p>
 
-        {product.description && (
-          <p className="product-description">
-            {product.description.length > 100
-              ? `${product.description.substring(0, 100)}...`
-              : product.description
-            }
-          </p>
-        )}
 
-        {/* Передаем только product, variant_id будет получен автоматически */}
         <AddToCartButton
           product={product}
           className="add-to-cart-btn"

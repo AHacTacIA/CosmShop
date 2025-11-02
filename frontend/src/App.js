@@ -13,6 +13,7 @@ import {RegisterForm} from "./pages/RegistrationPage";
 import {WishListPage} from "./pages/WishListPage";
 import CatalogPage from "./pages/CatalogPage";
 import {CartProvider} from "./hooks/useCart";
+import {ProductPage} from "./pages/ProductPage";
 
 
 
@@ -33,6 +34,7 @@ export default function App() {
                   <Route path="/wishlist" element={<WishListPage />} />
                   <Route path="/account" element={<ProfilePage />} />
                   <Route path="/category/:categorySlug" element={<CatalogPage />} />
+                  <Route path="/product/:id" element={<ProductPage />} />
                   <Route path="*" element={<Notfoundpage />} />
               </Routes>
               </AuthProvider>
