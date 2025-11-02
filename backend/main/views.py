@@ -343,6 +343,7 @@ class CartViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+# views.py
 class CartItemViewSet(viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -351,8 +352,13 @@ class CartItemViewSet(viewsets.ModelViewSet):
         return CartItem.objects.filter(cart__profile=self.request.user.profile)
 
     def perform_create(self, serializer):
+        # Получаем или создаем корзину пользователя
         cart, _ = Cart.objects.get_or_create(profile=self.request.user.profile)
+
+        # Передаем cart в контекст сериализатора
         serializer.save(cart=cart)
+
+
 
 
 class OrderViewSet(viewsets.ModelViewSet):

@@ -6,12 +6,13 @@ import {AuthProvider} from "./context/AuthContext";
 import { Homepage } from "./pages/HomePage"
 import {Notfoundpage} from "./pages/NotFoundPage";
 import {ProfilePage} from "./pages/ProfilePage";
-import {Cartpage} from "./pages/CartPage";
+import {CartPage} from "./pages/CartPage";
 import {Loginpage} from "./pages/LoginPage";
 import {Orderspage} from "./pages/OrdersPage";
 import {RegisterForm} from "./pages/RegistrationPage";
 import {WishListPage} from "./pages/WishListPage";
 import CatalogPage from "./pages/CatalogPage";
+import {CartProvider} from "./hooks/useCart";
 
 
 
@@ -19,14 +20,15 @@ export default function App() {
   return (
       <div>
           <div className='wrapper'>
-              <AuthProvider>
+              <CartProvider>
+                  <AuthProvider>
                   <Header/>
               <Routes>
                   <Route path="/" element={<Homepage />} />
                   <Route path="/login" element={<Loginpage />} />
                   <Route path="/register" element={<RegisterForm />} />
                   <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/cart" element={< Cartpage/>} />
+                  <Route path="/cart" element={< CartPage/>} />
                   <Route path="/orders" element={<Orderspage />} />
                   <Route path="/wishlist" element={<WishListPage />} />
                   <Route path="/account" element={<ProfilePage />} />
@@ -34,6 +36,8 @@ export default function App() {
                   <Route path="*" element={<Notfoundpage />} />
               </Routes>
               </AuthProvider>
+              </CartProvider>
+
 
 
 

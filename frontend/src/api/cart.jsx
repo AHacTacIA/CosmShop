@@ -1,27 +1,74 @@
 import apiClient from "./client";
 
 export const cartService = {
-
-    // Получение текущей корзины пользователя
-    getCart: () => {
+  // Получение текущей корзины пользователя (только ID корзины)
+  getCart: () => {
     return apiClient.get('/carts/my_cart/');
   },
 
-    // Получение элементов корзины
-    getCartItems: () => {
-    return apiClient.get('/cart-items/');
+  // Получение элементов корзины по ID корзины
+  getCartItems: async () => {
+    try {
+      // Сначала получаем корзину чтобы узнать её ID
+      const cartResponse = await apiClient.get('/carts/my_cart/');
+      const cartId = cartResponse.data.id;
+
+      // Затем получаем товары этой корзины
+      const itemsResponse = await apiClient.get(`/carts/${cartId}/items/`);
+      return itemsResponse;
+    } catch (error) {
+      console.error('Error getting cart items:', error);
+      throw error;
+    }
+  },
+
+  // Получение информации о товаре по ID
+  getProduct: (productId) => {
+    return apiClient.get(`/products/${productId}/`);
   },
 
   /**
    * Добавление товара в корзину
    * @param {Object} itemData - Данные товара
    * @param {number} itemData.product - ID продукта
-   * @param {number} itemData.variant - ID варианта продукта
+   * @param {number} itemData.variant - ID варианта продукта (опционально)
    * @param {number} itemData.quantity - Количество
    * @returns {Promise} - Ответ API
    */
-  addItem: (itemData) => {
-    return apiClient.post('/cart-items/', itemData);
+  addItem: async (itemData) => {
+    try {
+      let variantId = itemData.variant;
+
+      // Если variant_id не передан, загружаем информацию о товаре и берем первый вариант
+      if (!variantId) {
+        console.log('Variant ID not provided, loading product info...');
+        const productResponse = await apiClient.get(`/products/${itemData.product}/`);
+        const product = productResponse.data;
+
+        if (!product.variants || product.variants.length === 0) {
+          throw new Error('Product has no variants');
+        }
+
+        variantId = product.variants[0].id;
+        console.log('Using first variant ID:', variantId);
+      }
+
+      const requestData = {
+        product_id: itemData.product,
+        variant_id: variantId,
+        quantity: itemData.quantity || 1
+      };
+
+      console.log('Sending to cart API:', requestData);
+
+      const response = await apiClient.post('/cart-items/', requestData);
+      console.log('Cart API response:', response.data);
+
+      return response.data;
+    } catch (error) {
+      console.error('Error adding item to cart:', error);
+      throw error;
+    }
   },
 
   /**
@@ -57,8 +104,18 @@ export const cartService = {
    * Очистка корзины (удаление всех элементов)
    * @returns {Promise} - Ответ API
    */
-  clearCart: () => {
-    return apiClient.delete('/carts/my_cart/items/');
+  clearCart: async () => {
+    try {
+      // Сначала получаем корзину чтобы узнать её ID
+      const cartResponse = await apiClient.get('/carts/my_cart/');
+      const cartId = cartResponse.data.id;
+
+      // Очищаем корзину
+      return await apiClient.delete(`/carts/${cartId}/items/`);
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      throw error;
+    }
   },
 
   /**
@@ -77,8 +134,8 @@ export const cartService = {
    */
   getItemsCount: async () => {
     try {
-      const response = await apiClient.get('/carts/my_cart/');
-      return response.data.items.reduce((total, item) => total + item.quantity, 0);
+      const itemsResponse = await cartService.getCartItems();
+      return itemsResponse.data.reduce((total, item) => total + item.quantity, 0);
     } catch (error) {
       console.error('Error getting cart items count:', error);
       return 0;
@@ -91,8 +148,17 @@ export const cartService = {
    */
   getTotalPrice: async () => {
     try {
-      const response = await apiClient.get('/carts/my_cart/');
-      return response.data.total_price || 0;
+      const itemsResponse = await cartService.getCartItems();
+      let total = 0;
+
+      // Вычисляем общую сумму на клиенте
+      for (const item of itemsResponse.data) {
+        // Используем цену из варианта товара
+        const price = parseFloat(item.variant.price);
+        total += price * item.quantity;
+      }
+
+      return total;
     } catch (error) {
       console.error('Error getting cart total:', error);
       return 0;
@@ -100,11 +166,37 @@ export const cartService = {
   },
 
   /**
-   * Перенос корзины в заказ
-   * @returns {Promise} - Ответ API с созданным заказом
+   * Получение полной информации о корзине (ID + товары)
+   * @returns {Promise<Object>} - Полная информация о корзине
    */
-  checkout: () => {
-    return apiClient.post('/orders/', {});
-  },
+  getFullCart: async () => {
+    try {
+      // Получаем основную информацию о корзине
+      const cartResponse = await apiClient.get('/carts/my_cart/');
+      const cartId = cartResponse.data.id;
 
-}
+      // Получаем товары корзины
+      const itemsResponse = await apiClient.get(`/carts/${cartId}/items/`);
+
+      // Вычисляем общую сумму и количество товаров
+      let totalPrice = 0;
+      let totalItems = 0;
+
+      for (const item of itemsResponse.data) {
+        const price = parseFloat(item.variant.price);
+        totalPrice += price * item.quantity;
+        totalItems += item.quantity;
+      }
+
+      return {
+        ...cartResponse.data,
+        items: itemsResponse.data,
+        total_price: totalPrice,
+        total_items: totalItems
+      };
+    } catch (error) {
+      console.error('Error getting full cart:', error);
+      throw error;
+    }
+  }
+};

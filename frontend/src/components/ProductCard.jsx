@@ -1,6 +1,7 @@
 // components/ProductCard.jsx
 import React, { useState } from 'react';
 import { useWishlist } from '../hooks/useWishlist';
+import AddToCartButton from './AddToCartButton';
 
 const ProductCard = ({ product }) => {
   const { toggleWishlist, isInWishlist } = useWishlist();
@@ -35,16 +36,8 @@ const ProductCard = ({ product }) => {
     window.location.href = `/product/${product.id}`;
   };
 
-  const handleAddToCart = (e) => {
-    e.stopPropagation();
-    console.log('Add to cart:', product.id);
-  };
-
-  // Функции getMainImage, renderBrand, renderPrice остаются без изменений
   const getMainImage = () => {
-    // console.log(product.id)
-    // console.log(product.variants[0].images[0].image)
-    if (product.variants[0].images && product.variants[0].images.length > 0) {
+    if (product.variants && product.variants.length > 0 && product.variants[0].images) {
       const mainImage = product.variants[0].images.find(img => img.is_main);
       return mainImage ? mainImage.image : product.variants[0].images[0].image;
     }
@@ -73,18 +66,14 @@ const ProductCard = ({ product }) => {
   };
 
   const renderPrice = () => {
-    if (product.price) {
-      return `${product.price} BYN`;
-    }
-
     if (product.variants && product.variants.length > 0) {
-      const prices = product.variants.map(v => v.price).filter(p => p);
+      const prices = product.variants.map(v => parseFloat(v.price)).filter(p => !isNaN(p));
       if (prices.length > 0) {
         const minPrice = Math.min(...prices);
         const maxPrice = Math.max(...prices);
         return minPrice === maxPrice
-          ? `${minPrice} BYN`
-          : `от ${minPrice} BYN`;
+          ? `${minPrice.toFixed(2)} BYN`
+          : `от ${minPrice.toFixed(2)} BYN`;
       }
     }
 
@@ -130,12 +119,11 @@ const ProductCard = ({ product }) => {
           </p>
         )}
 
-        <button
+        {/* Передаем только product, variant_id будет получен автоматически */}
+        <AddToCartButton
+          product={product}
           className="add-to-cart-btn"
-          onClick={handleAddToCart}
-        >
-          В корзину
-        </button>
+        />
       </div>
     </div>
   );

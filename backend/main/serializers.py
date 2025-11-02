@@ -256,7 +256,7 @@ class ProductVarSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductVar
-        fields = ['art', 'price', 'volume', 'volume_unit', 'color', 'slug', 'images']
+        fields = ['id','art', 'price', 'volume', 'volume_unit', 'color', 'slug', 'images']
 
     # def get_images(self, obj):
     #     return ProductImgSerializer(obj.images.all(), many=True).data
@@ -424,14 +424,69 @@ class CartSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+# class CartItemSerializer(serializers.ModelSerializer):
+#     cart = CartSerializer(read_only=True)
+#     product = ProductSerializer(read_only=True)
+#     variant = ProductVarSerializer(read_only=True)
+#
+#     class Meta:
+#         model = CartItem
+#         fields = '__all__'
+
+# serializers.py
 class CartItemSerializer(serializers.ModelSerializer):
     cart = CartSerializer(read_only=True)
     product = ProductSerializer(read_only=True)
     variant = ProductVarSerializer(read_only=True)
 
+    # Поля для записи
+    product_id = serializers.IntegerField(write_only=True)
+    variant_id = serializers.IntegerField(write_only=True)
+
     class Meta:
         model = CartItem
-        fields = '__all__'
+        fields = [
+            'id', 'cart', 'product', 'variant',
+            'product_id', 'variant_id', 'quantity'
+        ]
+
+    def create(self, validated_data):
+        # Извлекаем ID
+        product_id = validated_data.pop('product_id')
+        variant_id = validated_data.pop('variant_id')
+        quantity = validated_data.get('quantity', 1)
+
+        # Получаем объекты
+        product = Product.objects.get(id=product_id)
+        variant = ProductVar.objects.get(id=variant_id)
+
+        # Получаем cart из контекста (передается из perform_create)
+        cart = self.context.get('cart')
+
+        if not cart:
+            # Если cart не передан, создаем/получаем корзину пользователя
+            cart, _ = Cart.objects.get_or_create(profile=self.context['request'].user.profile)
+
+        # Проверяем, есть ли уже такой товар в корзине
+        existing_item = CartItem.objects.filter(
+            cart=cart,
+            product=product,
+            variant=variant
+        ).first()
+
+        if existing_item:
+            # Если товар уже есть, увеличиваем количество
+            existing_item.quantity += quantity
+            existing_item.save()
+            return existing_item
+        else:
+            # Создаем новый элемент корзины
+            return CartItem.objects.create(
+                cart=cart,
+                product=product,
+                variant=variant,
+                quantity=quantity
+            )
 
 
 class OrderSerializer(serializers.ModelSerializer):

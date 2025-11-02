@@ -166,7 +166,7 @@ class Cart(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
     def __str__(self):
-        return f"Cart of {self.profile.username}"
+        return f"Cart of {self.profile.user.username}"
 
     class Meta:
         verbose_name = 'Корзина'
