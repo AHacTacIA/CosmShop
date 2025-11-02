@@ -3,7 +3,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import {AuthProvider} from "./context/AuthContext";
 
-import { Homepage } from "./pages/HomePage"
+import { HomePage } from "./pages/HomePage"
 import {Notfoundpage} from "./pages/NotFoundPage";
 import {ProfilePage} from "./pages/ProfilePage";
 import {CartPage} from "./pages/CartPage";
@@ -14,6 +14,7 @@ import {WishListPage} from "./pages/WishListPage";
 import CatalogPage from "./pages/CatalogPage";
 import {CartProvider} from "./hooks/useCart";
 import {ProductPage} from "./pages/ProductPage";
+import {BrandPage} from "./pages/BrandPage";
 
 
 
@@ -25,7 +26,7 @@ export default function App() {
                   <AuthProvider>
                   <Header/>
               <Routes>
-                  <Route path="/" element={<Homepage />} />
+                  <Route path="/" element={<HomePage />} />
                   <Route path="/login" element={<Loginpage />} />
                   <Route path="/register" element={<RegisterForm />} />
                   <Route path="/profile" element={<ProfilePage />} />
@@ -35,6 +36,7 @@ export default function App() {
                   <Route path="/account" element={<ProfilePage />} />
                   <Route path="/category/:categorySlug" element={<CatalogPage />} />
                   <Route path="/product/:id" element={<ProductPage />} />
+                  <Route path="/brand/:brandSlug" element={<BrandPage />} />
                   <Route path="*" element={<Notfoundpage />} />
               </Routes>
               </AuthProvider>

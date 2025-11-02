@@ -469,3 +469,30 @@
     font-size: 13px;
   }
 }
+
+/* В ProductPage.css и ProductCard.css */
+.brand-link {
+  background: none;
+  border: none;
+  color: #ff00aa;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.brand-link:hover {
+  color: #cc0088;
+  text-decoration: underline;
+}
+
+.product-brand-info .brand-link {
+  font-size: 14px;
+}
+
+.product-card .product-brand .brand-link {
+  font-size: 14px;
+}

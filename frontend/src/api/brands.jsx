@@ -1,3 +1,4 @@
+// api/brands.jsx
 import apiClient from "./client";
 
 export const brandService = {

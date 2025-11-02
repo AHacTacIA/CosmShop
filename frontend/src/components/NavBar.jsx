@@ -1,3 +1,4 @@
+// NavBar.jsx
 import React, { useEffect, useState } from "react";
 import { categoryService } from "../api/categories";
 import '../index.css';

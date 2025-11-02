@@ -6,6 +6,7 @@ import { categoryService } from '../api/categories';
 import { useCart } from '../hooks/useCart';
 import { useWishlist } from '../hooks/useWishlist';
 import './ProductPage.css';
+import { useNavigate } from 'react-router-dom';
 
 const ProductPage = () => {
   const { id } = useParams();
@@ -23,6 +24,9 @@ const ProductPage = () => {
   const [isWishlistLoading, setIsWishlistLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+
+  const navigate = useNavigate();
 
   // Функция для построения пути категорий
   const buildCategoryPath = useCallback(async (category) => {
@@ -204,7 +208,6 @@ const ProductPage = () => {
 
   return (
     <div className="product-page-container">
-      {/* Хлебные крошки с категориями */}
       {renderBreadcrumbs()}
 
       <div className="product-main">
@@ -245,7 +248,16 @@ const ProductPage = () => {
           {/* Бренд */}
           {product.brand && (
             <div className="product-brand-info">
-              <span className="brand-name">{product.brand.name}</span>
+              <span className="brand-label"></span>
+              <button
+                className="brand-link"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/brand/${product.brand.slug}`);
+                }}
+              >
+                {product.brand.name}
+              </button>
               {product.brand.country && (
                 <span className="brand-country"> • {product.brand.country}</span>
               )}
@@ -255,7 +267,7 @@ const ProductPage = () => {
           {/* Категория */}
           {product.category && (
             <div className="product-category-info">
-              <span className="category-label">Категория: </span>
+              <span className="category-label"></span>
               <a
                 href={`/catalog/${product.category.slug}`}
                 className="category-link"

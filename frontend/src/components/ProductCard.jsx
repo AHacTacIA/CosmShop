@@ -46,13 +46,23 @@ const ProductCard = ({ product }) => {
     return product.image || null;
   };
 
+
   const renderBrand = () => {
     if (!product.brand) return null;
 
     if (typeof product.brand === 'object' && product.brand !== null) {
       return (
         <p className="product-brand">
-          {product.brand.name || 'Бренд не указан'}
+          <button
+            className="brand-link"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              navigate(`/brand/${product.brand.slug}`);
+            }}
+          >
+            {product.brand.name || 'Бренд не указан'}
+          </button>
           {product.brand.country && (
             <span className="brand-country"> • {product.brand.country}</span>
           )}
