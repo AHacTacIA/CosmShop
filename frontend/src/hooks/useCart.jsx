@@ -145,6 +145,8 @@ export const CartProvider = ({ children }) => {
     getCartId
   };
 
+
+
   return (
     <CartContext.Provider value={value}>
       {children}

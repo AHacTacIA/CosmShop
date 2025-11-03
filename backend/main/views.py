@@ -1,7 +1,7 @@
 import django_filters
 from django_filters import NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
-from rest_framework import filters, viewsets, permissions, status, generics
+from rest_framework import filters, viewsets, permissions, status, generics, serializers
 # from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -377,26 +377,62 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Order.objects.filter(profile=self.request.user.profile)
 
+    def create(self, request, *args, **kwargs):
+        profile = request.user.profile
+        cart = get_object_or_404(Cart, profile=profile)
+
+        # Проверяем, что корзина не пуста
+        if not cart.items.exists():
+            return Response(
+                {"detail": "Корзина пуста"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Добавляем total_price из запроса или рассчитываем
+        if 'total_price' not in request.data:
+            # Рассчитываем сумму корзины на сервере как резервный вариант
+            total_price = 0
+            for item in cart.items.all():
+                price = item.variant.price if item.variant else item.product.price
+                total_price += price * item.quantity
+            request.data['total_price'] = str(total_price)
+
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         profile = self.request.user.profile
         cart = get_object_or_404(Cart, profile=profile)
 
-        order = serializer.save(profile=profile)
-        total_price = 0
+        # Используем переданный total_price или рассчитываем заново для проверки
+        submitted_total_price = serializer.validated_data.get('total_price', 0)
 
+        # Пересчитываем для верификации
+        calculated_total_price = 0
         for item in cart.items.all():
+            price = item.variant.price if item.variant else item.product.price
+            calculated_total_price += price * item.quantity
+
+        # Создаем заказ с переданной суммой
+        order = serializer.save(
+            profile=profile,
+            total_price=submitted_total_price
+        )
+
+        # Переносим товары из корзины в заказ
+        for item in cart.items.all():
+            price = item.variant.price if item.variant else item.product.price
+
             OrderItem.objects.create(
                 order=order,
                 product=item.product,
                 variant=item.variant,
                 quantity=item.quantity,
-                price=item.variant.price if item.variant else item.product.price
+                price=price
             )
-            total_price += (item.variant.price if item.variant else item.product.price) * item.quantity
 
-        order.total_price = total_price
-        order.save()
+        # Очищаем корзину
         cart.items.all().delete()
+
         return order
 
     @action(detail=True, methods=['get'])

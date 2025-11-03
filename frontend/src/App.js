@@ -15,6 +15,7 @@ import CatalogPage from "./pages/CatalogPage";
 import {CartProvider} from "./hooks/useCart";
 import {ProductPage} from "./pages/ProductPage";
 import {BrandPage} from "./pages/BrandPage";
+import {CheckoutPage} from "./pages/CheckoutPage";
 
 
 
@@ -37,6 +38,7 @@ export default function App() {
                   <Route path="/category/:categorySlug" element={<CatalogPage />} />
                   <Route path="/product/:id" element={<ProductPage />} />
                   <Route path="/brand/:brandSlug" element={<BrandPage />} />
+                  <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="*" element={<Notfoundpage />} />
               </Routes>
               </AuthProvider>

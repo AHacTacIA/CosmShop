@@ -204,7 +204,7 @@ class Order(models.Model):
     ), default='pending', verbose_name='Статус заказа')
 
     def __str__(self):
-        return f"Order {self.id} by {self.profile.username}"
+        return f"Order {self.id} by {self.profile.user.username}"
 
     class Meta:
         verbose_name = 'Заказ'

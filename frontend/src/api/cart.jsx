@@ -165,6 +165,8 @@ export const cartService = {
     }
   },
 
+
+
   /**
    * Получение полной информации о корзине (ID + товары)
    * @returns {Promise<Object>} - Полная информация о корзине

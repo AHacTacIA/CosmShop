@@ -1,4 +1,6 @@
+// order.jsx
 import apiClient from "./client";
+
 
 export const orderService = {
     /**
@@ -42,6 +44,7 @@ export const orderService = {
    * @param {string} orderData.payment_method - Способ оплаты
    * @returns {Promise} - Ответ API
    */
+
   createOrder: (orderData = {}) => {
     return apiClient.post('/orders/', orderData);
   },
@@ -54,6 +57,11 @@ export const orderService = {
    */
   updateOrder: (orderId, orderData) => {
     return apiClient.put(`/orders/${orderId}/`, orderData);
+  },
+
+  // Добавьте метод для получения деталей заказа
+  getOrderDetails: (orderId) => {
+    return apiClient.get(`/orders/${orderId}/`);
   },
 
   /**
