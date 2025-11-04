@@ -12,8 +12,8 @@ from urllib.parse import unquote
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
-    first_name = serializers.CharField(source='user.first_name', read_only=True)
-    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    first_name = serializers.CharField(source='user.first_name')
+    last_name = serializers.CharField(source='user.last_name')
     favorites_count = serializers.SerializerMethodField()
     favorites_preview = serializers.SerializerMethodField()
 
@@ -54,7 +54,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                 }
             }
         }
-        read_only_fields = ['user', 'favorites_count', 'favorites_preview']
+        read_only_fields = ['id', 'user', 'username', 'favorites_count', 'favorites_preview']
 
 
 
@@ -77,6 +77,18 @@ class ProfileSerializer(serializers.ModelSerializer):
         favorites = obj.favorites.all()[:3]  # Берем только первые 3
         from .serializers import ProductSerializer
         return ProductSerializer(favorites, many=True, context=self.context).data
+
+    def update(self, instance, validated_data):
+        # Добавьте этот метод для обновления данных пользователя
+        user_data = validated_data.pop('user', {})
+
+        if user_data:
+            user = instance.user
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+
+        return super().update(instance, validated_data)
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

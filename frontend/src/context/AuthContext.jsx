@@ -20,6 +20,30 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   };
 
+  // Добавляем функцию refreshUserData
+  const refreshUserData = async () => {
+    try {
+      console.log('Refreshing user data in AuthContext...');
+      const userData = await apiClient.auth.refreshUserData();
+
+      if (userData) {
+        setCurrentUser(userData);
+        setIsAuthenticated(true);
+        console.log('User data refreshed in context:', userData);
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+
+      return userData;
+    } catch (error) {
+      console.error('Error refreshing user data in context:', error);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      return null;
+    }
+  };
+
   const login = async (credentials) => {
     try {
       const response = await apiClient.auth.login(credentials);
@@ -46,7 +70,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
-    checkAuth
+    checkAuth,
+    refreshUserData // Добавляем функцию в контекст
   };
 
   return (

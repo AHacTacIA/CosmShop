@@ -13,7 +13,7 @@ const EditProfilePage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
+  console.log(error,setError)
   // Данные формы
   const [formData, setFormData] = useState({
     first_name: '',
