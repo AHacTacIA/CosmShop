@@ -191,8 +191,20 @@ class CartItem(models.Model):
 
 
 class Order(models.Model):
+    PAYMENT_METHODS = (
+        ('card_online', 'Банковской картой онлайн'),
+        ('cash_on_delivery', 'Наличными при получении'),
+        ('online_payment', 'Онлайн-оплата через систему электронных платежей'),
+    )
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='orders')
     total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Итоговая цена')
+    shipping_address = models.TextField(verbose_name='Адрес доставки')
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHODS,
+        default='card_online',
+        verbose_name='Способ оплаты'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=50, choices=(

@@ -1,7 +1,8 @@
 // pages/CheckoutPage.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../hooks/useCart';
 import { orderService } from '../api/order';
+import { useAuth } from '../context/AuthContext'; // Добавляем useAuth
 import './CheckoutPage.css';
 
 const CheckoutPage = () => {
@@ -14,86 +15,123 @@ const CheckoutPage = () => {
     error: cartError
   } = useCart();
 
+  const { currentUser } = useAuth(); // Получаем данные пользователя
+
   const [loading, setLoading] = useState(false);
   const [orderError, setOrderError] = useState('');
   const [success, setSuccess] = useState(false);
   const [order, setOrder] = useState(null);
 
-  // Данные формы
+  // Данные формы - инициализируем из профиля
   const [formData, setFormData] = useState({
     shipping_address: '',
-    payment_method: 'card',
-    notes: '',
+    payment_method: 'card_online', // Обновляем значения согласно модели
+    // Эти поля только для отображения, не для редактирования
     email: '',
     phone: '',
     first_name: '',
     last_name: ''
   });
 
+  // Заполняем данные из профиля при загрузке
+  useEffect(() => {
+    if (currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        email: currentUser.email || '',
+        phone: currentUser.phone_number || '',
+        first_name: currentUser.first_name || '',
+        last_name: currentUser.last_name || '',
+        shipping_address: currentUser.address || '' // Адрес по умолчанию из профиля
+      }));
+    }
+  }, [currentUser]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+
+    // Разрешаем изменять только shipping_address, payment_method
+    const editableFields = ['shipping_address', 'payment_method'];
+    if (editableFields.includes(name)) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setOrderError('');
+    e.preventDefault();
+    setLoading(true);
+    setOrderError('');
 
-  if (cartItems.length === 0) {
-    setOrderError('Корзина пуста. Добавьте товары перед оформлением заказа.');
-    setLoading(false);
-    return;
-  }
-
-  try {
-    const totalPrice = getTotalPrice();
-
-    // Создаем объект заказа с total_price
-    const orderPayload = {
-      shipping_address: formData.shipping_address,
-      payment_method: formData.payment_method,
-      notes: formData.notes,
-      total_price: totalPrice.toFixed(2)  // <-- Передаем сумму из корзины
-    };
-
-    console.log('Creating order with payload:', orderPayload);
-
-    const response = await orderService.createOrder(orderPayload);
-    console.log('Order created successfully:', response.data);
-
-    setOrder(response.data);
-    setSuccess(true);
-
-    await clearCart();
-
-  } catch (err) {
-    console.error('Order creation error:', err);
-    const errorData = err.response?.data;
-
-    let errorMessage = 'Произошла ошибка при оформлении заказа. Попробуйте еще раз.';
-
-    if (errorData) {
-      if (errorData.detail) {
-        errorMessage = errorData.detail;
-      } else if (errorData.message) {
-        errorMessage = errorData.message;
-      } else if (typeof errorData === 'object') {
-        const errors = Object.values(errorData).flat();
-        errorMessage = errors.join(', ');
-      }
+    if (cartItems.length === 0) {
+      setOrderError('Корзина пуста. Добавьте товары перед оформлением заказа.');
+      setLoading(false);
+      return;
     }
 
-    setOrderError(errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+    // Проверяем, что адрес доставки заполнен
+    if (!formData.shipping_address.trim()) {
+      setOrderError('Пожалуйста, укажите адрес доставки.');
+      setLoading(false);
+      return;
+    }
 
-  // Получение изображения товара
+    try {
+      const totalPrice = getTotalPrice();
+
+      // Создаем объект заказа только с необходимыми полями
+      const orderPayload = {
+        shipping_address: formData.shipping_address,
+        payment_method: formData.payment_method,
+        total_price: totalPrice.toFixed(2)
+      };
+
+      console.log('Creating order with payload:', orderPayload);
+
+      const response = await orderService.createOrder(orderPayload);
+      console.log('Order created successfully:', response.data);
+
+      setOrder(response.data);
+      setSuccess(true);
+
+      await clearCart();
+
+    } catch (err) {
+      console.error('Order creation error:', err);
+      const errorData = err.response?.data;
+
+      let errorMessage = 'Произошла ошибка при оформлении заказа. Попробуйте еще раз.';
+
+      if (errorData) {
+        if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (typeof errorData === 'object') {
+          const errors = Object.values(errorData).flat();
+          errorMessage = errors.join(', ');
+        }
+      }
+
+      setOrderError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Получение текста способа оплаты
+  const getPaymentMethodText = (method) => {
+    const paymentMethods = {
+      'card_online': 'Банковской картой онлайн',
+      'cash_on_delivery': 'Наличными при получении',
+      'online_payment': 'Онлайн-оплата через систему электронных платежей'
+    };
+    return paymentMethods[method] || method;
+  };
+
+  // Остальные функции остаются без изменений
   const getProductImage = (item) => {
     if (item.variant && item.variant.images && item.variant.images.length > 0) {
       const mainImage = item.variant.images.find(img => img.is_main);
@@ -106,7 +144,6 @@ const CheckoutPage = () => {
     return null;
   };
 
-  // Получение названия варианта
   const getVariantName = (item) => {
     if (item.variant) {
       if (item.variant.color) {
@@ -122,7 +159,6 @@ const CheckoutPage = () => {
     return null;
   };
 
-  // Получение цены товара
   const getItemPrice = (item) => {
     if (item.variant && item.variant.price) {
       return parseFloat(item.variant.price);
@@ -133,11 +169,11 @@ const CheckoutPage = () => {
     return 0;
   };
 
-  // Получение общей стоимости позиции
   const getItemTotal = (item) => {
     return getItemPrice(item) * item.quantity;
   };
 
+  // Состояния загрузки и отображения остаются без изменений
   if (cartLoading) {
     return (
       <div className="checkout-container">
@@ -201,12 +237,8 @@ const CheckoutPage = () => {
 
           <div className="delivery-info">
             <h4>Информация о доставке:</h4>
-            <p><strong>Адрес:</strong> {order.shipping_address || formData.shipping_address}</p>
-            <p><strong>Способ оплаты:</strong>
-              {order.payment_method === 'card' && ' Банковская карта'}
-              {order.payment_method === 'cash' && ' Наличные при получении'}
-              {order.payment_method === 'online' && ' Онлайн-оплата'}
-            </p>
+            <p><strong>Адрес:</strong> {order.shipping_address}</p>
+            <p><strong>Способ оплаты:</strong> {getPaymentMethodText(order.payment_method)}</p>
           </div>
 
           <div className="success-actions">
@@ -248,59 +280,40 @@ const CheckoutPage = () => {
       <div className="checkout-content">
         <div className="checkout-form-section">
           <form onSubmit={handleSubmit} className="checkout-form">
+            {/* Контактная информация - только для чтения */}
             <div className="form-section">
               <h3>Контактная информация</h3>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="first_name">Имя *</label>
-                  <input
-                    type="text"
-                    id="first_name"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleInputChange}
-                    required
-                  />
+              <div className="readonly-info">
+                <div className="info-row">
+                  <span className="info-label">Имя:</span>
+                  <span className="info-value">
+                    {formData.first_name || 'Не указано'}
+                  </span>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="last_name">Фамилия *</label>
-                  <input
-                    type="text"
-                    id="last_name"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleInputChange}
-                    required
-                  />
+                <div className="info-row">
+                  <span className="info-label">Фамилия:</span>
+                  <span className="info-value">
+                    {formData.last_name || 'Не указано'}
+                  </span>
                 </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="email">Email *</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
+                <div className="info-row">
+                  <span className="info-label">Email:</span>
+                  <span className="info-value">{formData.email}</span>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="phone">Телефон *</label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="+375 (XX) XXX-XX-XX"
-                    required
-                  />
+                <div className="info-row">
+                  <span className="info-label">Телефон:</span>
+                  <span className="info-value">
+                    {formData.phone || 'Не указан'}
+                  </span>
                 </div>
               </div>
+              <p className="info-note">
+                💡 Чтобы изменить контактные данные, перейдите в{' '}
+                <a href="/profile/edit" className="profile-link">настройки профиля</a>
+              </p>
             </div>
 
+            {/* Адрес доставки - редактируемый */}
             <div className="form-section">
               <h3>Адрес доставки</h3>
               <div className="form-group">
@@ -314,10 +327,16 @@ const CheckoutPage = () => {
                   placeholder="Город, улица, дом, квартира, почтовый индекс"
                   required
                 />
-                <small>Пример: г. Минск, ул. Примерная, д. 10, кв. 25, 220000</small>
+                <small>
+                  {formData.shipping_address === currentUser?.address
+                    ? '📋 Используется адрес из вашего профиля'
+                    : '✏️ Вы изменили адрес доставки'
+                  }
+                </small>
               </div>
             </div>
 
+            {/* Способ оплаты */}
             <div className="form-section">
               <h3>Способ оплаты</h3>
               <div className="payment-methods">
@@ -325,13 +344,13 @@ const CheckoutPage = () => {
                   <input
                     type="radio"
                     name="payment_method"
-                    value="card"
-                    checked={formData.payment_method === 'card'}
+                    value="card_online"
+                    checked={formData.payment_method === 'card_online'}
                     onChange={handleInputChange}
                   />
                   <span className="checkmark"></span>
                   <div className="payment-info">
-                    <span className="payment-title">Банковская карта</span>
+                    <span className="payment-title">Банковской картой онлайн</span>
                     <span className="payment-desc">Оплата картой онлайн</span>
                   </div>
                 </label>
@@ -339,8 +358,8 @@ const CheckoutPage = () => {
                   <input
                     type="radio"
                     name="payment_method"
-                    value="cash"
-                    checked={formData.payment_method === 'cash'}
+                    value="cash_on_delivery"
+                    checked={formData.payment_method === 'cash_on_delivery'}
                     onChange={handleInputChange}
                   />
                   <span className="checkmark"></span>
@@ -353,33 +372,19 @@ const CheckoutPage = () => {
                   <input
                     type="radio"
                     name="payment_method"
-                    value="online"
-                    checked={formData.payment_method === 'online'}
+                    value="online_payment"
+                    checked={formData.payment_method === 'online_payment'}
                     onChange={handleInputChange}
                   />
                   <span className="checkmark"></span>
                   <div className="payment-info">
-                    <span className="payment-title">Онлайн-оплата</span>
+                    <span className="payment-title">Онлайн-оплата через систему электронных платежей</span>
                     <span className="payment-desc">Через систему электронных платежей</span>
                   </div>
                 </label>
               </div>
             </div>
 
-            <div className="form-section">
-              <h3>Дополнительная информация</h3>
-              <div className="form-group">
-                <label htmlFor="notes">Примечания к заказу</label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  rows="3"
-                  placeholder="Комментарии к доставке, пожелания, особые указания и т.д."
-                />
-              </div>
-            </div>
 
             {orderError && (
               <div className="error-message">
@@ -413,6 +418,7 @@ const CheckoutPage = () => {
           </form>
         </div>
 
+        {/* Правая колонка с товарами остается без изменений */}
         <div className="order-summary-section">
           <div className="order-summary">
             <h3>Ваш заказ</h3>

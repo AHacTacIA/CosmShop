@@ -341,9 +341,9 @@ const OrderDetailsPage = () => {
               <div className="info-row">
                 <span className="info-label">Способ оплаты:</span>
                 <span className="info-value">
-                  {order.payment_method === 'card' && 'Банковская карта'}
-                  {order.payment_method === 'cash' && 'Наличные при получении'}
-                  {order.payment_method === 'online' && 'Онлайн-оплата'}
+                  {order.payment_method === 'card_online' && 'Банковская карта'}
+                  {order.payment_method === 'cash_on_delivery' && 'Наличные при получении'}
+                  {order.payment_method === 'online_payment' && 'Онлайн-оплата'}
                   {!order.payment_method && 'Не указан'}
                 </span>
               </div>

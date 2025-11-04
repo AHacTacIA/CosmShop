@@ -480,15 +480,26 @@ class CartItemSerializer(serializers.ModelSerializer):
             )
 
 
+# class OrderSerializer(serializers.ModelSerializer):
+#     profile = ProfileSerializer(read_only=True)
+#
+#     class Meta:
+#         model = Order
+#         fields = '__all__'
+#         read_only_fields = ['status', 'profile', 'created_at', 'updated_at']
+
+
 class OrderSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
+
+    # Для удобства чтения
+    payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
 
     class Meta:
         model = Order
         fields = '__all__'
-        read_only_fields = ['status', 'profile', 'created_at', 'updated_at']
-
-
+        read_only_fields = ['profile', 'status', 'created_at', 'updated_at']
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

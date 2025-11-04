@@ -397,6 +397,20 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Добавляем адрес из профиля, если не передан в запросе
+        if 'shipping_address' not in request.data or not request.data['shipping_address']:
+            if profile.address:
+                request.data['shipping_address'] = profile.address
+            else:
+                return Response(
+                    {"detail": "Адрес доставки не указан в профиле"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Устанавливаем способ оплаты по умолчанию, если не передан
+        if 'payment_method' not in request.data or not request.data['payment_method']:
+            request.data['payment_method'] = 'card_online'
+
         # Добавляем total_price из запроса или рассчитываем
         if 'total_price' not in request.data:
             # Рассчитываем сумму корзины на сервере как резервный вариант
