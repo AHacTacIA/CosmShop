@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from django.utils.text import slugify
 
 
+
 class Brand(models.Model):
     name = models.CharField(max_length=150, verbose_name='Название бренда')
     slug = models.SlugField(max_length=100, unique=True)
@@ -134,7 +135,7 @@ class Profile(models.Model):
     birth_date = models.DateField(null=True, blank=True, verbose_name='Дата рождения')
 
     def __str__(self):
-        return self.username
+        return self.user.username
 
     class Meta:
         verbose_name = 'Профиль'
@@ -165,7 +166,7 @@ class Cart(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
     def __str__(self):
-        return f"Cart of {self.profile.username}"
+        return f"Cart of {self.profile.user.username}"
 
     class Meta:
         verbose_name = 'Корзина'
@@ -190,8 +191,20 @@ class CartItem(models.Model):
 
 
 class Order(models.Model):
+    PAYMENT_METHODS = (
+        ('card_online', 'Банковской картой онлайн'),
+        ('cash_on_delivery', 'Наличными при получении'),
+        ('online_payment', 'Онлайн-оплата через систему электронных платежей'),
+    )
     profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='orders')
     total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Итоговая цена')
+    shipping_address = models.TextField(verbose_name='Адрес доставки')
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_METHODS,
+        default='card_online',
+        verbose_name='Способ оплаты'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=50, choices=(
@@ -203,7 +216,7 @@ class Order(models.Model):
     ), default='pending', verbose_name='Статус заказа')
 
     def __str__(self):
-        return f"Order {self.id} by {self.profile.username}"
+        return f"Order {self.id} by {self.profile.user.username}"
 
     class Meta:
         verbose_name = 'Заказ'

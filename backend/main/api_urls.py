@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework import routers
 from .views import ProfileViewSet, BrandViewSet, CategoryViewSet, ProductViewSet, ProductImgViewSet, ProductVarViewSet, \
     ReviewViewSet, CartViewSet, CartItemViewSet, OrderViewSet, OrderItemViewSet, BulkCategoryViewSet, \
-    BulkProductViewSet
+    BulkProductViewSet, RegisterView
 
 router = routers.DefaultRouter()
 router.register(r'bulk-products', BulkProductViewSet, basename='bulk-product')
@@ -22,11 +22,15 @@ router.register(r'order-items', OrderItemViewSet, basename='order-item')
 urlpatterns = [
                   path('products/search/', ProductViewSet.as_view({'get': 'search_products'}), name='product-search'),
                   path('brands/search/', BrandViewSet.as_view({'get': 'search_brands'}), name='brand-search'),
-                  path('profiles/me/', ProfileViewSet.as_view({'get': 'me'}), name='profile-me'),
+                  path('profiles/me/', ProfileViewSet.as_view({ 'get': 'me',
+                                                                'patch': 'me',
+                                                                'put': 'me'
+                                                               }), name='profile-me'),
                   path('products/<int:pk>/favorite/', ProductViewSet.as_view({'post': 'favorite'}),
                        name='product-favorite'),
                   path('products/<int:pk>/unfavorite/', ProductViewSet.as_view({'delete': 'unfavorite'}),
                        name='product-unfavorite'),
+                  path('api/register/', RegisterView.as_view(), name='register'),
 
 
               ] + router.urls

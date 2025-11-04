@@ -1,18 +1,186 @@
+import os
+from datetime import date
+from django.contrib.auth.password_validation import validate_password
+from django.core.validators import RegexValidator
 from django.db import transaction
 from rest_framework import serializers
 from .models import Profile, Brand, Category, Product, ProductImg, ProductVar, Review, Cart, CartItem, Order, OrderItem
+from .models import User
+from urllib.parse import unquote
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name')
+    last_name = serializers.CharField(source='user.last_name')
+    favorites_count = serializers.SerializerMethodField()
+    favorites_preview = serializers.SerializerMethodField()
+
+    phone_number = serializers.CharField(
+        required=False,
+        validators=[
+            RegexValidator(
+                regex='^\+?1?\d{12}$',
+                message="Номер телефона должен быть в формате: '+375999999999'. Должен состоять из 12 цифр."
+            )
+        ]
+    )
+
     class Meta:
         model = Profile
-        fields = ['id', 'user', 'phone_number', 'address', 'birth_date']
+        # fields = ['id', 'phone_number', 'address', 'birth_date']
+        # extra_kwargs = {
+        #     'phone_number': {'required': False},
+        #     'address': {'required': False},
+        #     'birth_date': {'required': False}
+        # }
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'phone_number',
+            'address',
+            'birth_date',
+            'favorites_count',
+            'favorites_preview'
+        ]
+        extra_kwargs = {
+            'birth_date': {
+                'error_messages': {
+                    'invalid': 'Введите корректную дату в формате ГГГГ-ММ-ДД'
+                }
+            }
+        }
+        read_only_fields = ['id', 'user', 'username', 'favorites_count', 'favorites_preview']
 
 
-class FavoriteSerializer(serializers.ModelSerializer):
+
+    def validate_birth_date(self, value):
+        if value:
+            if value.year < 1900:
+                raise serializers.ValidationError("Введите корректный год рождения")
+            today = date.today()
+            age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+            if age < 13:
+                raise serializers.ValidationError("Пользователь должен быть старше 13 лет")
+            return value
+
+    def get_favorites_count(self, obj):
+        """Возвращает количество избранных товаров"""
+        return obj.favorites.count()
+
+    def get_favorites_preview(self, obj):
+        """Возвращает превью избранных товаров (первые 3)"""
+        favorites = obj.favorites.all()[:3]  # Берем только первые 3
+        from .serializers import ProductSerializer
+        return ProductSerializer(favorites, many=True, context=self.context).data
+
+    def update(self, instance, validated_data):
+        # Добавьте этот метод для обновления данных пользователя
+        user_data = validated_data.pop('user', {})
+
+        if user_data:
+            user = instance.user
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+
+        return super().update(instance, validated_data)
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    profile = ProfileSerializer(required=False)
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        validators=[validate_password],
+        style = {'input_type': 'password'},
+        error_messages={
+            'blank': 'Пароль не может быть пустым',
+            'min_length': 'Пароль должен содержать минимум 8 символов'
+        }
+    )
+    first_name = serializers.CharField(
+        required=False,
+        validators=[
+            RegexValidator(
+                regex=r'^[a-zA-Zа-яА-ЯёЁ\- ]+$',
+                message="Имя может содержать только буквы и дефис"
+            )
+        ],
+        max_length=30
+    )
+    last_name = serializers.CharField(
+        required=False,
+        validators=[
+            RegexValidator(
+                regex=r'^[a-zA-Zа-яА-ЯёЁ\- ]+$',
+                message="Фамилия может содержать только буквы и дефис"
+            )
+        ],
+        max_length=30
+    )
+
     class Meta:
-        model = Profile
-        fields = ['favorites']
+        model = User
+        fields = ['username', 'email', 'password', 'first_name', 'last_name', 'profile']
+        extra_kwargs = {
+            'email': {'required': True},
+            'username': {'required': True}
+        }
+
+
+
+    def validate_username(self, value):
+        if len(value) < 4:
+            raise serializers.ValidationError("Имя пользователя должно содержать минимум 4 символа")
+        if len(value) > 20:
+            raise serializers.ValidationError("Имя пользователя должно содержать максимум 20 символов")
+        if not value.isascii():
+            raise serializers.ValidationError("Имя пользователя может содержать только латинские буквы и цифры")
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("Пользователь с таким именем уже существует")
+        return value
+
+    def validate(self, data):
+        if len(data.get('password', '')) < 8:
+            raise serializers.ValidationError({"password": "Пароль должен содержать минимум 8 символов"})
+
+            # Дополнительная проверка пароля
+        if data.get('password', '').isdigit():
+            raise serializers.ValidationError({"password": "Пароль не может состоять только из цифр"})
+
+        return data
+
+
+    def create(self, validated_data):
+        profile_data = validated_data.pop('profile', {})
+
+        # Создаем пользователя
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', '')
+        )
+
+        # Создаем профиль только если есть данные
+        if profile_data:
+            Profile.objects.create(user=user, **profile_data)
+        else:
+            # Создаем пустой профиль, если данных нет
+            Profile.objects.create(user=user)
+
+        return user
+
+# class FavoriteSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Profile
+#         fields = ['favorites']
 
 
 class BrandSerializer(serializers.ModelSerializer):
@@ -61,9 +229,38 @@ class ProductImgSerializer(serializers.ModelSerializer):
         model = ProductImg
         fields = ['image', 'is_main']
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+
+        if representation.get('image'):
+            original_url = representation['image']
+
+            try:
+                # Декодируем URL
+                from urllib.parse import unquote
+                decoded_url = unquote(original_url)
+
+                # Извлекаем только имя файла
+                import os
+                filename = os.path.basename(decoded_url)
+
+                # Создаем абсолютный веб-URL
+                correct_url = f"http://127.0.0.1:8000/media/products/{filename}"
+                representation['image'] = correct_url
+
+            except Exception as e:
+                print(f"Error processing image: {e}")
+                # Fallback с абсолютным URL
+                representation['image'] = "http://127.0.0.1:8000/media/placeholder.jpg"
+
+        return representation
+
+
     def to_internal_value(self, data):
         # Преобразуем путь в файл
         return {'image': data['image'], 'is_main': data['is_main']}
+
+
 
 class ProductVarSerializer(serializers.ModelSerializer):
     # images = serializers.SerializerMethodField(many=True)
@@ -71,7 +268,7 @@ class ProductVarSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductVar
-        fields = ['art', 'price', 'volume', 'volume_unit', 'color', 'slug', 'images']
+        fields = ['id','art', 'price', 'volume', 'volume_unit', 'color', 'slug', 'images']
 
     # def get_images(self, obj):
     #     return ProductImgSerializer(obj.images.all(), many=True).data
@@ -239,22 +436,82 @@ class CartSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
 class CartItemSerializer(serializers.ModelSerializer):
     cart = CartSerializer(read_only=True)
     product = ProductSerializer(read_only=True)
     variant = ProductVarSerializer(read_only=True)
 
+    # Поля для записи
+    product_id = serializers.IntegerField(write_only=True)
+    variant_id = serializers.IntegerField(write_only=True)
+
     class Meta:
         model = CartItem
-        fields = '__all__'
+        fields = [
+            'id', 'cart', 'product', 'variant',
+            'product_id', 'variant_id', 'quantity'
+        ]
+
+    def create(self, validated_data):
+        # Извлекаем ID
+        product_id = validated_data.pop('product_id')
+        variant_id = validated_data.pop('variant_id')
+        quantity = validated_data.get('quantity', 1)
+
+        # Получаем объекты
+        product = Product.objects.get(id=product_id)
+        variant = ProductVar.objects.get(id=variant_id)
+
+        # Получаем cart из контекста (передается из perform_create)
+        cart = self.context.get('cart')
+
+        if not cart:
+            # Если cart не передан, создаем/получаем корзину пользователя
+            cart, _ = Cart.objects.get_or_create(profile=self.context['request'].user.profile)
+
+        # Проверяем, есть ли уже такой товар в корзине
+        existing_item = CartItem.objects.filter(
+            cart=cart,
+            product=product,
+            variant=variant
+        ).first()
+
+        if existing_item:
+            # Если товар уже есть, увеличиваем количество
+            existing_item.quantity += quantity
+            existing_item.save()
+            return existing_item
+        else:
+            # Создаем новый элемент корзины
+            return CartItem.objects.create(
+                cart=cart,
+                product=product,
+                variant=variant,
+                quantity=quantity
+            )
+
+
+# class OrderSerializer(serializers.ModelSerializer):
+#     profile = ProfileSerializer(read_only=True)
+#
+#     class Meta:
+#         model = Order
+#         fields = '__all__'
+#         read_only_fields = ['status', 'profile', 'created_at', 'updated_at']
 
 
 class OrderSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
 
+    # Для удобства чтения
+    payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
     class Meta:
         model = Order
         fields = '__all__'
+        read_only_fields = ['profile', 'status', 'created_at', 'updated_at']
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

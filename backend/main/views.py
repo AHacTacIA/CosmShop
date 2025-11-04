@@ -1,12 +1,20 @@
+import django_filters
 from django_filters import NumberFilter
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
-from rest_framework import filters, viewsets, permissions, status
+from rest_framework import filters, viewsets, permissions, status, generics, serializers
 # from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.pagination import PageNumberPagination
+
+class FavoritePagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 from .models import Profile, Brand, Category, Product, ProductImg, ProductVar, Review, Cart, CartItem, Order, OrderItem
 from .serializers import (
@@ -15,7 +23,7 @@ from .serializers import (
     ProductImgSerializer, ProductVarSerializer,
     ReviewSerializer, CartSerializer,
     CartItemSerializer, OrderSerializer,
-    OrderItemSerializer
+    OrderItemSerializer, UserRegistrationSerializer
 )
 from .permissions import IsAdminOrReadOnly, IsOwnerOrReadOnly
 
@@ -58,24 +66,34 @@ class BulkProductViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-class ProductFilter(FilterSet):
-    min_price = NumberFilter(field_name="price", lookup_expr='gte')
-    max_price = NumberFilter(field_name="price", lookup_expr='lte')
+# class ProductFilter(FilterSet):
+#     min_price = NumberFilter(field_name="price", lookup_expr='gte')
+#     max_price = NumberFilter(field_name="price", lookup_expr='lte')
+#
+#     class Meta:
+#         model = Product
+#         fields = ['category', 'brand', 'min_price', 'max_price']
+#
+
+class ProductFilter(django_filters.FilterSet):
+    min_price = django_filters.NumberFilter(field_name='variants__price', lookup_expr='gte')
+    max_price = django_filters.NumberFilter(field_name='variants__price', lookup_expr='lte')
+    brand = django_filters.CharFilter(field_name='brand__name', lookup_expr='icontains')
+    search = django_filters.CharFilter(field_name='name', lookup_expr='icontains')
 
     class Meta:
         model = Product
-        fields = ['category', 'brand', 'min_price', 'max_price']
-
+        fields = ['category', 'brand', 'min_price', 'max_price', 'search']
 
 User = get_user_model()
 
 
 class ProfileViewSet(viewsets.ModelViewSet):
     """
-        API endpoint для управления профилями пользователей.
-        - Пользователи видят только свой профиль
-        - Админы видят все профили
-        - Кастомный эндпоинт /me/ для получения текущего профиля
+    API endpoint для управления профилями пользователей.
+    - Пользователи видят только свой профиль
+    - Админы видят все профили
+    - Кастомный эндпоинт /me/ для получения и обновления текущего профиля
     """
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
@@ -87,12 +105,79 @@ class ProfileViewSet(viewsets.ModelViewSet):
             return Profile.objects.all()
         return Profile.objects.filter(user=self.request.user)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'patch', 'put'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
-        """Получение профиля текущего пользователя"""
+        """Получение и обновление профиля текущего пользователя"""
         profile = get_object_or_404(Profile, user=request.user)
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+
+        if request.method == 'GET':
+            serializer = self.get_serializer(profile)
+            return Response(serializer.data)
+
+        elif request.method in ['PATCH', 'PUT']:
+            serializer = self.get_serializer(profile, data=request.data, partial=(request.method == 'PATCH'))
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='me/favorites', pagination_class=FavoritePagination)
+    def my_favorites(self, request):
+        """Получение списка избранных товаров текущего пользователя с пагинацией"""
+        try:
+            profile = request.user.profile
+            favorites = profile.favorites.all().order_by('-id')  # Сортировка по новым первым
+
+            # Пагинируем queryset
+            page = self.paginate_queryset(favorites)
+            if page is not None:
+                from .serializers import ProductSerializer
+                serializer = ProductSerializer(page, many=True, context={'request': request})
+                return self.get_paginated_response(serializer.data)
+
+            # Если пагинация отключена
+            from .serializers import ProductSerializer
+            serializer = ProductSerializer(favorites, many=True, context={'request': request})
+            return Response({
+                'count': favorites.count(),
+                'results': serializer.data
+            })
+
+        except Profile.DoesNotExist:
+            return Response(
+                {'error': 'Профиль не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = UserRegistrationSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # Получаем профиль для включения в ответ
+        profile = user.profile
+        profile_serializer = ProfileSerializer(profile)
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+            },
+            'profile': profile_serializer.data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        })
 
 
 class BrandViewSet(viewsets.ModelViewSet):
@@ -131,6 +216,13 @@ class CategoryViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+    @action(detail=False, methods=['get'])
+    def parents(self, request):
+        parents = Category.objects.filter(parent__isnull=True)
+        serializer = self.get_serializer(parents, many=True)
+        return Response(serializer.data)
+
+
 class ProductViewSet(viewsets.ModelViewSet):
     """
         API endpoint для управления товарами.
@@ -146,6 +238,15 @@ class ProductViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ProductFilter
     search_fields = ['name', 'description']
+
+    def get_permissions(self):
+        """
+        Переопределяем permissions для разных actions
+        """
+        if self.action in ['favorite', 'unfavorite']:
+            # Для избранного разрешаем авторизованным пользователям
+            return [permissions.IsAuthenticated()]
+        return [IsAdminOrReadOnly()]
 
     @action(detail=False, methods=['get'], url_path='search')
     def search_products(self, request):
@@ -251,6 +352,7 @@ class CartViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+
 class CartItemViewSet(viewsets.ModelViewSet):
     serializer_class = CartItemSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -259,8 +361,13 @@ class CartItemViewSet(viewsets.ModelViewSet):
         return CartItem.objects.filter(cart__profile=self.request.user.profile)
 
     def perform_create(self, serializer):
+        # Получаем или создаем корзину пользователя
         cart, _ = Cart.objects.get_or_create(profile=self.request.user.profile)
+
+        # Передаем cart в контекст сериализатора
         serializer.save(cart=cart)
+
+
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -279,26 +386,76 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Order.objects.filter(profile=self.request.user.profile)
 
+    def create(self, request, *args, **kwargs):
+        profile = request.user.profile
+        cart = get_object_or_404(Cart, profile=profile)
+
+        # Проверяем, что корзина не пуста
+        if not cart.items.exists():
+            return Response(
+                {"detail": "Корзина пуста"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Добавляем адрес из профиля, если не передан в запросе
+        if 'shipping_address' not in request.data or not request.data['shipping_address']:
+            if profile.address:
+                request.data['shipping_address'] = profile.address
+            else:
+                return Response(
+                    {"detail": "Адрес доставки не указан в профиле"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Устанавливаем способ оплаты по умолчанию, если не передан
+        if 'payment_method' not in request.data or not request.data['payment_method']:
+            request.data['payment_method'] = 'card_online'
+
+        # Добавляем total_price из запроса или рассчитываем
+        if 'total_price' not in request.data:
+            # Рассчитываем сумму корзины на сервере как резервный вариант
+            total_price = 0
+            for item in cart.items.all():
+                price = item.variant.price if item.variant else item.product.price
+                total_price += price * item.quantity
+            request.data['total_price'] = str(total_price)
+
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         profile = self.request.user.profile
         cart = get_object_or_404(Cart, profile=profile)
 
-        order = serializer.save(profile=profile)
-        total_price = 0
+        # Используем переданный total_price или рассчитываем заново для проверки
+        submitted_total_price = serializer.validated_data.get('total_price', 0)
 
+        # Пересчитываем для верификации
+        calculated_total_price = 0
         for item in cart.items.all():
+            price = item.variant.price if item.variant else item.product.price
+            calculated_total_price += price * item.quantity
+
+        # Создаем заказ с переданной суммой
+        order = serializer.save(
+            profile=profile,
+            total_price=submitted_total_price
+        )
+
+        # Переносим товары из корзины в заказ
+        for item in cart.items.all():
+            price = item.variant.price if item.variant else item.product.price
+
             OrderItem.objects.create(
                 order=order,
                 product=item.product,
                 variant=item.variant,
                 quantity=item.quantity,
-                price=item.variant.price if item.variant else item.product.price
+                price=price
             )
-            total_price += (item.variant.price if item.variant else item.product.price) * item.quantity
 
-        order.total_price = total_price
-        order.save()
+        # Очищаем корзину
         cart.items.all().delete()
+
         return order
 
     @action(detail=True, methods=['get'])
