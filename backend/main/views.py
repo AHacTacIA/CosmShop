@@ -90,10 +90,10 @@ User = get_user_model()
 
 class ProfileViewSet(viewsets.ModelViewSet):
     """
-        API endpoint для управления профилями пользователей.
-        - Пользователи видят только свой профиль
-        - Админы видят все профили
-        - Кастомный эндпоинт /me/ для получения текущего профиля
+    API endpoint для управления профилями пользователей.
+    - Пользователи видят только свой профиль
+    - Админы видят все профили
+    - Кастомный эндпоинт /me/ для получения и обновления текущего профиля
     """
     queryset = Profile.objects.all()
     serializer_class = ProfileSerializer
@@ -105,12 +105,21 @@ class ProfileViewSet(viewsets.ModelViewSet):
             return Profile.objects.all()
         return Profile.objects.filter(user=self.request.user)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'patch', 'put'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
-        """Получение профиля текущего пользователя"""
+        """Получение и обновление профиля текущего пользователя"""
         profile = get_object_or_404(Profile, user=request.user)
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+
+        if request.method == 'GET':
+            serializer = self.get_serializer(profile)
+            return Response(serializer.data)
+
+        elif request.method in ['PATCH', 'PUT']:
+            serializer = self.get_serializer(profile, data=request.data, partial=(request.method == 'PATCH'))
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'], url_path='me/favorites', pagination_class=FavoritePagination)
     def my_favorites(self, request):
