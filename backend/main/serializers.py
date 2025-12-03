@@ -12,29 +12,44 @@ from urllib.parse import unquote
 class ProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
-    first_name = serializers.CharField(source='user.first_name')
-    last_name = serializers.CharField(source='user.last_name')
+    first_name = serializers.CharField(
+        source='user.first_name',
+        required=False,  # Добавил required=False
+        validators=[
+            RegexValidator(
+                regex=r'^[a-zA-Zа-яА-ЯёЁ\- ]+$',
+                message="Имя может содержать только буквы и дефис"
+            )
+        ],
+        max_length=30
+    )
+    last_name = serializers.CharField(
+        source='user.last_name',
+        required=False,  # Добавил required=False
+        validators=[
+            RegexValidator(
+                regex=r'^[a-zA-Zа-яА-ЯёЁ\- ]+$',
+                message="Фамилия может содержать только буквы и дефис"
+            )
+        ],
+        max_length=30
+    )
     favorites_count = serializers.SerializerMethodField()
     favorites_preview = serializers.SerializerMethodField()
 
     phone_number = serializers.CharField(
         required=False,
+        allow_blank=True,
         validators=[
             RegexValidator(
-                regex='^\+?1?\d{12}$',
-                message="Номер телефона должен быть в формате: '+375999999999'. Должен состоять из 12 цифр."
+                regex=r'^\+375(29|33|44|25)\d{7}$',
+                message="Номер телефона должен быть в формате: '+37529XXXXXXX'. Должен состоять из 12 цифр."
             )
         ]
     )
 
     class Meta:
         model = Profile
-        # fields = ['id', 'phone_number', 'address', 'birth_date']
-        # extra_kwargs = {
-        #     'phone_number': {'required': False},
-        #     'address': {'required': False},
-        #     'birth_date': {'required': False}
-        # }
         fields = [
             'id',
             'username',
@@ -54,9 +69,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                 }
             }
         }
-        read_only_fields = ['id', 'user', 'username', 'favorites_count', 'favorites_preview']
-
-
+        read_only_fields = ['id', 'user', 'username', 'email', 'favorites_count', 'favorites_preview']
 
     def validate_birth_date(self, value):
         if value:
@@ -79,7 +92,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         return ProductSerializer(favorites, many=True, context=self.context).data
 
     def update(self, instance, validated_data):
-        # Добавьте этот метод для обновления данных пользователя
+        # Обновляем данные пользователя
         user_data = validated_data.pop('user', {})
 
         if user_data:
@@ -88,16 +101,53 @@ class ProfileSerializer(serializers.ModelSerializer):
                 setattr(user, attr, value)
             user.save()
 
-        return super().update(instance, validated_data)
+        # Обновляем данные профиля
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+
+class ProfileRegistrationSerializer(serializers.ModelSerializer):
+    phone_number = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        validators=[
+            RegexValidator(
+                regex=r'^\+375(29|33|44|25)\d{7}$',
+                message="Номер телефона должен быть в формате: '+37529XXXXXXX'. Должен состоять из 12 цифр."
+            )
+        ]
+    )
+
+    """Сериализатор профиля только для регистрации (без first_name и last_name)"""
+    class Meta:
+        model = Profile
+        fields = ['phone_number', 'address', 'birth_date']
+        extra_kwargs = {
+            'phone_number': {'required': False},
+            'address': {'required': False},
+            'birth_date': {'required': False}
+        }
+
+    def validate_birth_date(self, value):
+        if value:
+            if value.year < 1900:
+                raise serializers.ValidationError("Введите корректный год рождения")
+            today = date.today()
+            age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+            if age < 13:
+                raise serializers.ValidationError("Пользователь должен быть старше 13 лет")
+            return value
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(required=False)
+    profile = ProfileRegistrationSerializer(required=False)
     password = serializers.CharField(
         write_only=True,
         required=True,
         validators=[validate_password],
-        style = {'input_type': 'password'},
+        style={'input_type': 'password'},
         error_messages={
             'blank': 'Пароль не может быть пустым',
             'min_length': 'Пароль должен содержать минимум 8 символов'
@@ -132,7 +182,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             'username': {'required': True}
         }
 
+    def validate(self, data):
+        # Проверка пароля
+        if len(data.get('password', '')) < 8:
+            raise serializers.ValidationError({"password": "Пароль должен содержать минимум 8 символов"})
 
+        if data.get('password', '').isdigit():
+            raise serializers.ValidationError({"password": "Пароль не может состоять только из цифр"})
+
+        return data
 
     def validate_username(self, value):
         if len(value) < 4:
@@ -144,17 +202,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if User.objects.filter(username__iexact=value).exists():
             raise serializers.ValidationError("Пользователь с таким именем уже существует")
         return value
-
-    def validate(self, data):
-        if len(data.get('password', '')) < 8:
-            raise serializers.ValidationError({"password": "Пароль должен содержать минимум 8 символов"})
-
-            # Дополнительная проверка пароля
-        if data.get('password', '').isdigit():
-            raise serializers.ValidationError({"password": "Пароль не может состоять только из цифр"})
-
-        return data
-
 
     def create(self, validated_data):
         profile_data = validated_data.pop('profile', {})
@@ -168,11 +215,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', '')
         )
 
-        # Создаем профиль только если есть данные
+        # Создаем профиль
         if profile_data:
             Profile.objects.create(user=user, **profile_data)
         else:
-            # Создаем пустой профиль, если данных нет
             Profile.objects.create(user=user)
 
         return user

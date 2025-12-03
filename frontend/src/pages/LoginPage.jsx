@@ -98,7 +98,7 @@ const Loginpage = () => {
 
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="username">Имя пользователя или Email*</label>
+          <label htmlFor="username">Имя пользователя</label>
           <input
             type="text"
             id="username"
@@ -113,7 +113,7 @@ const Loginpage = () => {
         </div>
 
         <div>
-          <label htmlFor="password">Пароль*</label>
+          <label htmlFor="password">Пароль</label>
           <input
             type="password"
             id="password"
