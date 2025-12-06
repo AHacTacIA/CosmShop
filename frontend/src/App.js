@@ -18,6 +18,7 @@ import {BrandPage} from "./pages/BrandPage";
 import {CheckoutPage} from "./pages/CheckoutPage";
 import {OrderDetailsPage} from "./pages/OrderDetailsPage";
 import {EditProfilePage} from "./pages/EditProfilePage";
+import {AllProductsPage} from "./pages/AllProductsPage";
 
 
 
@@ -37,6 +38,7 @@ export default function App() {
                   <Route path="/wishlist" element={<WishListPage />} />
                   <Route path="/account" element={<ProfilePage />} />
                   <Route path="/category/:categorySlug" element={<CatalogPage />} />
+                  <Route path="/products" element={<AllProductsPage />} />
                   <Route path="/product/:id" element={<ProductPage />} />
                   <Route path="/brand/:brandSlug" element={<BrandPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />

@@ -194,7 +194,6 @@ const EditProfilePage = () => {
                   required
                   placeholder="example@email.com"
                 />
-                <small>Email используется для входа в систему</small>
               </div>
             </div>
           </div>
@@ -282,32 +281,32 @@ const EditProfilePage = () => {
         </form>
 
         {/* Боковая панель с информацией */}
-        <div className="form-sidebar">
-          <div className="sidebar-card">
-            <h4>💡 Подсказки</h4>
-            <ul>
-              <li>Заполните все поля для полной информации</li>
-              <li>Email используется для входа в систему</li>
-              <li>Укажите актуальный номер телефона для связи</li>
-              <li>Адрес доставки будет использоваться при заказах</li>
-            </ul>
-          </div>
+        {/*<div className="form-sidebar">*/}
+        {/*  <div className="sidebar-card">*/}
+        {/*    <h4>💡 Подсказки</h4>*/}
+        {/*    <ul>*/}
+        {/*      <li>Заполните все поля для полной информации</li>*/}
+        {/*      <li>Email используется для входа в систему</li>*/}
+        {/*      <li>Укажите актуальный номер телефона для связи</li>*/}
+        {/*      <li>Адрес доставки будет использоваться при заказах</li>*/}
+        {/*    </ul>*/}
+        {/*  </div>*/}
 
-          <div className="sidebar-card">
-            <h4>🔒 Безопасность</h4>
-            <p>Ваши данные защищены и не передаются третьим лицам</p>
-          </div>
+        {/*  /!*<div className="sidebar-card">*!/*/}
+        {/*  /!*  <h4>🔒 Безопасность</h4>*!/*/}
+        {/*  /!*  <p>Ваши данные защищены и не передаются третьим лицам</p>*!/*/}
+        {/*  /!*</div>*!/*/}
 
-          <div className="sidebar-card danger-zone">
-            <h4>⚡ Быстрые действия</h4>
-            <button
-              onClick={() => navigate('/change-password')}
-              className="btn-action outline"
-            >
-              Сменить пароль
-            </button>
-          </div>
-        </div>
+        {/*  /!*<div className="sidebar-card danger-zone">*!/*/}
+        {/*  /!*  <h4>⚡ Быстрые действия</h4>*!/*/}
+        {/*  /!*  <button*!/*/}
+        {/*  /!*    onClick={() => navigate('/change-password')}*!/*/}
+        {/*  /!*    className="btn-action outline"*!/*/}
+        {/*  /!*  >*!/*/}
+        {/*  /!*    Сменить пароль*!/*/}
+        {/*  /!*  </button>*!/*/}
+        {/*  /!*</div>*!/*/}
+        {/*</div>*/}
       </div>
     </div>
   );

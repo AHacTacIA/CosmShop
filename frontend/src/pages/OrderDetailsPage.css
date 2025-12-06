@@ -603,3 +603,117 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* OrderDetailsPage.css - добавьте эти стили */
+
+/* Кликабельные товары */
+.order-item.clickable {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.order-item.clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(255, 0, 170, 0.15);
+  border-left-color: #cc0088;
+  background: linear-gradient(135deg, #fff, #fffafc);
+}
+
+.order-item.clickable:hover .item-name {
+  color: #ff00aa;
+}
+
+.order-item.clickable:hover .product-link-icon {
+  opacity: 1;
+  transform: translateX(3px);
+}
+
+/* Иконка ссылки на товар */
+.product-link-icon {
+  display: inline-block;
+  margin-left: 8px;
+  opacity: 0.7;
+  font-size: 14px;
+  color: #cc0088;
+  transition: all 0.3s ease;
+  vertical-align: middle;
+}
+
+/* Подсказка при наведении на изображение */
+.item-image {
+  position: relative;
+  overflow: hidden;
+}
+
+.view-product-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 0, 170, 0.85);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 8px;
+  transform: translateY(100%);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.order-item.clickable:hover .view-product-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hint-icon {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.hint-text {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  padding: 0 5px;
+}
+
+/* Анимация для элементов заказа */
+.order-item {
+  transition: all 0.3s ease;
+}
+
+.order-item:hover .item-image img {
+  transform: scale(1.05);
+}
+
+.item-image img {
+  transition: transform 0.3s ease;
+}
+
+/* Улучшения для бренда */
+.item-brand .brand-country {
+  color: #666;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+/* Адаптивные улучшения */
+@media (max-width: 768px) {
+  .order-item.clickable .view-product-hint {
+    display: none;
+  }
+
+  .product-link-icon {
+    margin-left: 4px;
+    font-size: 12px;
+  }
+
+  .order-item.clickable:hover {
+    transform: translateY(-2px);
+  }
+}

@@ -105,7 +105,7 @@
 /* Основной контент */
 .edit-profile-content {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  /*grid-template-columns: 2fr 1fr;*/
   gap: 40px;
   align-items: start;
 }

@@ -85,6 +85,12 @@ const OrderDetailsPage = () => {
     window.print();
   };
 
+  // Переход на страницу товара
+  const navigateToProduct = (productId, e) => {
+    e.stopPropagation();
+    navigate(`/product/${productId}`);
+  };
+
   // Получение текста статуса
   const getStatusText = (status) => {
     const statusMap = {
@@ -259,23 +265,41 @@ const OrderDetailsPage = () => {
               const productImage = getProductImage(item);
               const variantName = getVariantName(item);
               const itemTotal = parseFloat(item.price) * item.quantity;
+              const productId = item.product?.id;
 
               return (
-                <div key={item.id || index} className="order-item">
+                <div
+                  key={item.id || index}
+                  className={`order-item ${productId ? 'clickable' : ''}`}
+                  onClick={productId ? (e) => navigateToProduct(productId, e) : undefined}
+                  title={productId ? "Перейти к товару" : ""}
+                >
                   <div className="item-image">
                     {productImage ? (
                       <img src={productImage} alt={item.product?.name || 'Товар'} />
                     ) : (
                       <div className="no-image">Нет изображения</div>
                     )}
+                    {productId && (
+                      <div className="view-product-hint">
+                        <span className="hint-icon">👁️</span>
+                        <span className="hint-text">Посмотреть товар</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="item-details">
                     <h3 className="item-name">
                       {item.product?.name || 'Товар'}
+                      {productId && <span className="product-link-icon">↗</span>}
                     </h3>
                     {item.product?.brand?.name && (
-                      <p className="item-brand">Бренд: {item.product.brand.name}</p>
+                      <p className="item-brand">
+                        Бренд: {item.product.brand.name}
+                        {item.product.brand.country && (
+                          <span className="brand-country"> • {item.product.brand.country}</span>
+                        )}
+                      </p>
                     )}
                     {variantName && (
                       <p className="item-variant">{variantName}</p>
@@ -393,14 +417,14 @@ const OrderDetailsPage = () => {
                 </button>
               )}
 
-              {order.status === 'delivered' && (
-                <button
-                  onClick={handleReorder}
-                  className="btn-action primary"
-                >
-                  🔄 Повторить заказ
-                </button>
-              )}
+              {/*{order.status === 'delivered' && (*/}
+              {/*  <button*/}
+              {/*    onClick={handleReorder}*/}
+              {/*    className="btn-action primary"*/}
+              {/*  >*/}
+              {/*    🔄 Повторить заказ*/}
+              {/*  </button>*/}
+              {/*)}*/}
 
               <button
                 onClick={() => navigate('/orders')}
@@ -437,7 +461,9 @@ const OrderDetailsPage = () => {
         @media print {
           .order-actions,
           .breadcrumbs,
-          .btn-action {
+          .btn-action,
+          .product-link-icon,
+          .view-product-hint {
             display: none !important;
           }
           
@@ -453,6 +479,10 @@ const OrderDetailsPage = () => {
           .info-card {
             break-inside: avoid;
             margin-bottom: 20px;
+          }
+          
+          .order-item {
+            cursor: default !important;
           }
         }
       `}</style>

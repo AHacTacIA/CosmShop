@@ -39,7 +39,7 @@ const Footer = () => {
           <div className="footer-section">
             <h3 className="footer-title">Категории</h3>
             <ul className="footer-links">
-              <li><a href="/">Все товары</a></li>
+              <li><a href="/products">Все товары</a></li>
               <li><a href="/category/uhod-dlya-litsa">Уход за лицом</a></li>
               <li><a href="/category/volosy">Уход за волосами</a></li>
               <li><a href="/category/makiyazh">Декоративная косметика</a></li>
@@ -81,10 +81,10 @@ const Footer = () => {
             <div className="copyright">
               © {currentYear} Cosmetics Shop. Все права защищены.
             </div>
-            <div className="footer-bottom-links">
-              <a href="/privacy">Политика конфиденциальности</a>
-              <a href="/terms">Условия использования</a>
-            </div>
+            {/*<div className="footer-bottom-links">*/}
+            {/*  <a href="/privacy">Политика конфиденциальности</a>*/}
+            {/*  <a href="/terms">Условия использования</a>*/}
+            {/*</div>*/}
           </div>
         </div>
       </div>
