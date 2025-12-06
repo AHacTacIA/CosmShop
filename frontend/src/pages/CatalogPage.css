@@ -845,3 +845,26 @@
 .product-card .product-brand .brand-link {
   font-size: 14px;
 }
+
+/* Добавьте в CatalogPage.css */
+.catalog-breadcrumbs {
+  margin-bottom: 20px;
+  font-size: 14px;
+  color: #666;
+}
+
+.catalog-breadcrumbs a {
+  color: #ff00aa;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.catalog-breadcrumbs a:hover {
+  color: #cc0088;
+  text-decoration: underline;
+}
+
+.catalog-breadcrumbs span {
+  color: #999;
+  margin: 0 5px;
+}

@@ -25,23 +25,23 @@ export default function Header(){
                 </Link>
 
                 <ul className='header_tabs'>
-                    <li className="icon-item">
-                        <img
-                            src={searchIcon}
-                            alt="Search"
-                            width="25"
-                            height="25"
-                            className="header-icon"
-                        />
+                    {/*<li className="icon-item">*/}
+                    {/*    <img*/}
+                    {/*        src={searchIcon}*/}
+                    {/*        alt="Search"*/}
+                    {/*        width="25"*/}
+                    {/*        height="25"*/}
+                    {/*        className="header-icon"*/}
+                    {/*    />*/}
 
 
-                    </li>
+                    {/*</li>*/}
 
                     <li className="icon-item">
                         <Link to="/wishlist" className="icon-link">
                             <img
                                 src={heartIcon}
-                                alt="Search"
+                                alt="Wish list"
                                 width="25"
                                 height="25"
                                 className="header-icon"
@@ -73,7 +73,7 @@ export default function Header(){
                         <Link to="/cart" className="icon-link">
                             <img
                                 src={handbagIcon}
-                                alt="Search"
+                                alt="Cart"
                                 width="25"
                                 height="25"
                                 className="header-icon"

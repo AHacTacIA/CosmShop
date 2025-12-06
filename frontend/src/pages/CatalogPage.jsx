@@ -1,6 +1,6 @@
 // pages/CatalogPage.jsx
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { productService } from '../api/products';
 import { categoryService } from '../api/categories';
 import ProductCard from '../components/ProductCard';
@@ -9,19 +9,25 @@ import './CatalogPage.css';
 const CatalogPage = () => {
   const { categorySlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [allProducts, setAllProducts] = useState([]); // Все продукты после серверной фильтрации
+  const location = useLocation();
+
+  // Используем ref для отслеживания первого рендера
+  const isInitialMount = useRef(true);
+
+  const [allProducts, setAllProducts] = useState([]);
   const [category, setCategory] = useState(null);
   const [allCategories, setAllCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
-  // Пагинация (только на фронтенде)
+  // Пагинация
   const [pagination, setPagination] = useState({
     currentPage: parseInt(searchParams.get('page')) || 1,
     pageSize: parseInt(searchParams.get('page_size')) || 12
   });
 
-  // Активные фильтры (те, что применены и отображаются в результатах)
+  // Активные фильтры
   const [activeFilters, setActiveFilters] = useState({
     brand: searchParams.get('brand') || '',
     minPrice: searchParams.get('min_price') || '',
@@ -29,7 +35,7 @@ const CatalogPage = () => {
     search: searchParams.get('search') || ''
   });
 
-  // Временные фильтры (те, что вводятся в поля, но еще не применены)
+  // Временные фильтры
   const [tempFilters, setTempFilters] = useState({
     brand: searchParams.get('brand') || '',
     minPrice: searchParams.get('min_price') || '',
@@ -37,28 +43,37 @@ const CatalogPage = () => {
     search: searchParams.get('search') || ''
   });
 
-  // Загрузка всех категорий при монтировании
+  // Определяем, находимся ли мы на странице /products
+  const isProductsPage = location.pathname === '/products';
+
+  // 1. Загрузка всех категорий (один раз при монтировании)
   useEffect(() => {
     const loadAllCategories = async () => {
       try {
+        setIsLoadingCategories(true);
         const response = await categoryService.getAllCategories();
         setAllCategories(response.data);
       } catch (err) {
         console.error('Error loading categories:', err);
+        setError('Ошибка загрузки категорий');
+      } finally {
+        setIsLoadingCategories(false);
       }
     };
+
     loadAllCategories();
-  }, []);
+  }, []); // Пустой массив зависимостей - выполняется один раз
 
-  // Функция для получения категории по slug
-  const getCategoryBySlug = (slug) => {
+  // 2. Получение категории по slug
+  const getCategoryBySlug = useCallback((slug) => {
     return allCategories.find(cat => cat.slug === slug) || null;
-  };
+  }, [allCategories]);
 
-  // Рекурсивная функция для получения всех дочерних категорий
-  const getAllChildCategories = (categoryId) => {
+  // 3. Рекурсивная функция для получения всех дочерних категорий
+  const getAllChildCategories = useCallback((categoryId) => {
+    if (!allCategories.length) return [];
+
     const childCategories = [];
-
     const findChildren = (parentId) => {
       const children = allCategories.filter(cat => cat.parent === parentId);
       children.forEach(child => {
@@ -69,25 +84,22 @@ const CatalogPage = () => {
 
     findChildren(categoryId);
     return childCategories;
-  };
+  }, [allCategories]);
 
-  // Получение всех ID категорий для запроса (включая дочерние)
-  const getAllCategoryIdsForRequest = (currentCategorySlug) => {
-    if (!currentCategorySlug) return null;
+  // 4. Получение всех ID категорий для запроса
+  const getAllCategoryIdsForRequest = useCallback((currentCategorySlug) => {
+    if (!currentCategorySlug || !allCategories.length) return null;
 
     const categoryData = getCategoryBySlug(currentCategorySlug);
     if (!categoryData) return null;
 
     return [categoryData.id, ...getAllChildCategories(categoryData.id)];
-  };
+  }, [allCategories, getCategoryBySlug, getAllChildCategories]);
 
-  // Загрузка продуктов для одной категории
-  const loadProductsForCategory = async (categoryId, filters) => {
+  // 5. Загрузка продуктов для категории
+  const loadProductsForCategory = useCallback(async (categoryId, filters) => {
     try {
-      const apiFilters = {
-        ...filters,
-        category: categoryId
-      };
+      const apiFilters = { ...filters, category: categoryId };
 
       // Очищаем пустые параметры
       Object.keys(apiFilters).forEach(key => {
@@ -102,41 +114,22 @@ const CatalogPage = () => {
       console.error(`Error loading products for category ${categoryId}:`, err);
       return [];
     }
-  };
+  }, []);
 
-  // Загрузка продуктов с серверной фильтрацией для всех категорий
-  const loadFilteredProducts = async (currentFilters, currentCategorySlug) => {
+  // 6. Основная функция загрузки продуктов
+  const loadProducts = useCallback(async () => {
+    // Если категории еще загружаются, ждем
+    if (isLoadingCategories) return;
+
     try {
       setLoading(true);
+      setError(null);
 
       let productsData = [];
 
-      if (currentCategorySlug) {
-        const categoryData = getCategoryBySlug(currentCategorySlug);
-        if (categoryData) {
-          setCategory(categoryData);
-          const allCategoryIds = getAllCategoryIdsForRequest(currentCategorySlug);
-
-          if (allCategoryIds && allCategoryIds.length > 0) {
-            // Загружаем продукты для каждой категории отдельно
-            const productPromises = allCategoryIds.map(categoryId =>
-              loadProductsForCategory(categoryId, currentFilters)
-            );
-
-            const productsArrays = await Promise.all(productPromises);
-
-            // Объединяем все продукты
-            productsData = productsArrays.flat();
-          }
-        } else {
-          setError(`Категория "${currentCategorySlug}" не найдена`);
-          return [];
-        }
-      } else {
-        // Загружаем все товары без фильтра по категории
-        const apiFilters = { ...currentFilters };
-
-        // Очищаем пустые параметры
+      if (isProductsPage) {
+        // Страница /products - загружаем все товары
+        const apiFilters = { ...activeFilters };
         Object.keys(apiFilters).forEach(key => {
           if (!apiFilters[key]) {
             delete apiFilters[key];
@@ -145,6 +138,40 @@ const CatalogPage = () => {
 
         const response = await productService.getFilteredProducts(apiFilters);
         productsData = response.data;
+
+      } else if (categorySlug) {
+        // Страница категории
+        const categoryData = getCategoryBySlug(categorySlug);
+        if (categoryData) {
+          setCategory(categoryData);
+          const allCategoryIds = getAllCategoryIdsForRequest(categorySlug);
+
+          if (allCategoryIds && allCategoryIds.length > 0) {
+            // Загружаем продукты для каждой категории параллельно
+            const productPromises = allCategoryIds.map(categoryId =>
+              loadProductsForCategory(categoryId, activeFilters)
+            );
+
+            const productsArrays = await Promise.all(productPromises);
+            productsData = productsArrays.flat();
+          } else {
+            // Если нет ID категорий
+            setAllProducts([]);
+            setLoading(false);
+            return;
+          }
+        } else {
+          // Категория не найдена
+          setError(`Категория "${categorySlug}" не найдена`);
+          setAllProducts([]);
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Не должно случиться
+        setAllProducts([]);
+        setLoading(false);
+        return;
       }
 
       // Удаляем дубликаты по ID
@@ -152,17 +179,147 @@ const CatalogPage = () => {
         index === self.findIndex(p => p.id === product.id)
       );
 
-      return uniqueProducts;
+      setAllProducts(uniqueProducts);
 
     } catch (err) {
-      console.error('Error loading filtered products:', err);
-      throw err;
+      console.error('Error loading products:', err);
+      setError(err.message || 'Ошибка загрузки каталога');
+      setAllProducts([]);
     } finally {
       setLoading(false);
     }
+  }, [
+    isLoadingCategories,
+    isProductsPage,
+    categorySlug,
+    activeFilters,
+    allCategories,
+    getCategoryBySlug,
+    getAllCategoryIdsForRequest,
+    loadProductsForCategory
+  ]);
+
+  // 7. Эффект для загрузки продуктов при изменении зависимостей
+  useEffect(() => {
+    // Пропускаем первый рендер в StrictMode
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    loadProducts();
+  }, [
+    loadProducts,
+    // Убираем все остальные зависимости, так как они уже есть в loadProducts
+  ]);
+
+  // 8. Инициализация при первом рендере
+  useEffect(() => {
+    if (isInitialMount.current) {
+      loadProducts();
+    }
+  }, []); // Пустой массив - только при монтировании
+
+  // 9. Очистка фильтров при смене категории
+  useEffect(() => {
+    if (categorySlug && allCategories.length > 0 && !isProductsPage) {
+      const currentCategory = getCategoryBySlug(categorySlug);
+      if (currentCategory && (!category || currentCategory.id !== category.id)) {
+        // Сбрасываем фильтры только для новой категории
+        const resetFilters = {
+          brand: '',
+          minPrice: '',
+          maxPrice: '',
+          search: ''
+        };
+
+        setTempFilters(resetFilters);
+        setActiveFilters(resetFilters);
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+
+        // Очищаем URL от параметров фильтрации
+        const params = new URLSearchParams();
+        setSearchParams(params);
+      }
+    }
+  }, [categorySlug, allCategories, isProductsPage]);
+
+  // 10. Инициализация фильтров из URL
+  useEffect(() => {
+    const initialFilters = {
+      brand: searchParams.get('brand') || '',
+      minPrice: searchParams.get('min_price') || '',
+      maxPrice: searchParams.get('max_price') || '',
+      search: searchParams.get('search') || ''
+    };
+
+    setTempFilters(initialFilters);
+    setActiveFilters(initialFilters);
+  }, []); // Только при монтировании
+
+  // 11. Пагинация
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
+    const endIndex = startIndex + pagination.pageSize;
+    return allProducts.slice(startIndex, endIndex);
+  }, [allProducts, pagination.currentPage, pagination.pageSize]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(allProducts.length / pagination.pageSize);
+  }, [allProducts.length, pagination.pageSize]);
+
+  // 12. Сброс на первую страницу при изменении активных фильтров
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  }, [activeFilters]);
+
+  // 13. Обработчики
+  const handleTempFilterChange = (filterName, value) => {
+    setTempFilters(prev => ({
+      ...prev,
+      [filterName]: value
+    }));
   };
 
-  // Обновление URL с параметрами
+  const handleApplyFilters = () => {
+    setActiveFilters(tempFilters);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    updateURLParams(tempFilters, { ...pagination, currentPage: 1 });
+  };
+
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({ ...prev, currentPage: newPage }));
+    updateURLParams(activeFilters, { ...pagination, currentPage: newPage });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    const newPageSize = parseInt(newSize);
+    setPagination({
+      currentPage: 1,
+      pageSize: newPageSize
+    });
+    updateURLParams(activeFilters, {
+      ...pagination,
+      pageSize: newPageSize,
+      currentPage: 1
+    });
+  };
+
+  const handleResetFilters = () => {
+    const resetFilters = {
+      brand: '',
+      minPrice: '',
+      maxPrice: '',
+      search: ''
+    };
+    setTempFilters(resetFilters);
+    setActiveFilters(resetFilters);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setSearchParams(new URLSearchParams());
+  };
+
+  // 14. Обновление URL
   const updateURLParams = (newFilters, newPagination) => {
     const params = new URLSearchParams();
 
@@ -177,136 +334,7 @@ const CatalogPage = () => {
     setSearchParams(params);
   };
 
-  // Очистка фильтров при смене категории
-  const resetFiltersForNewCategory = () => {
-    const resetFilters = {
-      brand: '',
-      minPrice: '',
-      maxPrice: '',
-      search: ''
-    };
-
-    setTempFilters(resetFilters);
-    setActiveFilters(resetFilters);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-
-    // Очищаем URL от параметров фильтрации, но сохраняем пагинацию если нужно
-    const params = new URLSearchParams();
-    if (pagination.pageSize !== 12) {
-      params.set('page_size', pagination.pageSize.toString());
-    }
-    setSearchParams(params);
-  };
-
-  // Загрузка данных при изменении категории или активных фильтров
-  useEffect(() => {
-    const loadCatalogData = async () => {
-      if (allCategories.length === 0) return;
-
-      try {
-        const productsData = await loadFilteredProducts(activeFilters, categorySlug);
-        setAllProducts(productsData);
-      } catch (err) {
-        console.error('Error loading catalog:', err);
-        setError('Ошибка загрузки каталога');
-      }
-    };
-
-    loadCatalogData();
-  }, [categorySlug, allCategories, activeFilters]); // Добавляем activeFilters в зависимости
-
-  // Очистка фильтров при смене категории
-  useEffect(() => {
-    if (allCategories.length > 0 && categorySlug) {
-      // Проверяем, действительно ли сменилась категория
-      const currentCategory = getCategoryBySlug(categorySlug);
-      if (currentCategory && (!category || currentCategory.id !== category.id)) {
-        resetFiltersForNewCategory();
-      }
-    }
-  }, [categorySlug, allCategories]); // Срабатывает при изменении categorySlug
-
-  // Инициализация временных фильтров из URL при первой загрузке
-  useEffect(() => {
-    const initialFilters = {
-      brand: searchParams.get('brand') || '',
-      minPrice: searchParams.get('min_price') || '',
-      maxPrice: searchParams.get('max_price') || '',
-      search: searchParams.get('search') || ''
-    };
-
-    setTempFilters(initialFilters);
-    setActiveFilters(initialFilters);
-  }, []);
-
-  // Пагинация продуктов на фронтенде
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
-    const endIndex = startIndex + pagination.pageSize;
-    return allProducts.slice(startIndex, endIndex);
-  }, [allProducts, pagination.currentPage, pagination.pageSize]);
-
-  // Общее количество страниц
-  const totalPages = useMemo(() => {
-    return Math.ceil(allProducts.length / pagination.pageSize);
-  }, [allProducts.length, pagination.pageSize]);
-
-  // Сброс на первую страницу при изменении активных фильтров
-  useEffect(() => {
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-  }, [activeFilters]);
-
-  // Обработчик изменения временных фильтров
-  const handleTempFilterChange = (filterName, value) => {
-    setTempFilters(prev => ({
-      ...prev,
-      [filterName]: value
-    }));
-  };
-
-  // Применение фильтров (нажатие кнопки "Показать")
-  const handleApplyFilters = () => {
-    setActiveFilters(tempFilters);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-    updateURLParams(tempFilters, { ...pagination, currentPage: 1 });
-  };
-
-  // Обработчик изменения страницы
-  const handlePageChange = (newPage) => {
-    setPagination(prev => ({ ...prev, currentPage: newPage }));
-    updateURLParams(activeFilters, { ...pagination, currentPage: newPage });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // Обработчик изменения размера страницы
-  const handlePageSizeChange = (newSize) => {
-    const newPageSize = parseInt(newSize);
-    setPagination({
-      currentPage: 1,
-      pageSize: newPageSize
-    });
-    updateURLParams(activeFilters, {
-      ...pagination,
-      pageSize: newPageSize,
-      currentPage: 1
-    });
-  };
-
-  // Сброс фильтров
-  const handleResetFilters = () => {
-    const resetFilters = {
-      brand: '',
-      minPrice: '',
-      maxPrice: '',
-      search: ''
-    };
-    setTempFilters(resetFilters);
-    setActiveFilters(resetFilters);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-    setSearchParams(new URLSearchParams());
-  };
-
-  // Проверка, есть ли изменения в фильтрах
+  // 15. Проверка изменений фильтров
   const hasFilterChanges = useMemo(() => {
     return (
       tempFilters.brand !== activeFilters.brand ||
@@ -316,7 +344,22 @@ const CatalogPage = () => {
     );
   }, [tempFilters, activeFilters]);
 
-  // Компонент пагинации
+  // 16. Заголовок страницы
+  const getPageTitle = () => {
+    if (isProductsPage) {
+      return 'Все товары';
+    }
+    return category ? category.name : 'Каталог товаров';
+  };
+
+  const getPageDescription = () => {
+    if (isProductsPage) {
+      return 'Полный каталог косметики и уходовых средств от лучших брендов';
+    }
+    return category?.description || '';
+  };
+
+  // 17. Компонент пагинации
   const Pagination = () => {
     if (totalPages <= 1) return null;
 
@@ -330,7 +373,6 @@ const CatalogPage = () => {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
-    // Кнопка "Назад"
     if (pagination.currentPage > 1) {
       pages.push(
         <button
@@ -343,7 +385,6 @@ const CatalogPage = () => {
       );
     }
 
-    // Первая страница
     if (startPage > 1) {
       pages.push(
         <button
@@ -359,7 +400,6 @@ const CatalogPage = () => {
       }
     }
 
-    // Страницы
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <button
@@ -372,7 +412,6 @@ const CatalogPage = () => {
       );
     }
 
-    // Последняя страница
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
         pages.push(<span key="ellipsis2" className="pagination-ellipsis">...</span>);
@@ -388,7 +427,6 @@ const CatalogPage = () => {
       );
     }
 
-    // Кнопка "Вперед"
     if (pagination.currentPage < totalPages) {
       pages.push(
         <button
@@ -404,8 +442,8 @@ const CatalogPage = () => {
     return <div className="pagination">{pages}</div>;
   };
 
-  // Показываем загрузку если категории еще не загружены
-  if (allCategories.length === 0) {
+  // 18. Рендеринг
+  if (isLoadingCategories) {
     return (
       <div className="catalog-container">
         <div className="loading-spinner">
@@ -433,7 +471,7 @@ const CatalogPage = () => {
         <div className="error-message">
           <h2>Ошибка</h2>
           <p>{error}</p>
-          <button onClick={() => window.location.reload()}>Попробовать снова</button>
+          <button onClick={() => loadProducts()}>Попробовать снова</button>
         </div>
       </div>
     );
@@ -441,12 +479,24 @@ const CatalogPage = () => {
 
   return (
     <div className="catalog-container">
+      <div className="catalog-breadcrumbs">
+        <a href="/">Главная</a>
+        <span> / </span>
+        {isProductsPage ? (
+          <span>Все товары</span>
+        ) : (
+          <>
+            <a href="/products">Все товары</a>
+            <span> / </span>
+            <span>{category?.name}</span>
+          </>
+        )}
+      </div>
+
       <div className="catalog-header">
-        <h1>
-          {category ? category.name : 'Каталог товаров'}
-        </h1>
-        {category?.description && (
-          <p className="category-description">{category.description}</p>
+        <h1>{getPageTitle()}</h1>
+        {getPageDescription() && (
+          <p className="category-description">{getPageDescription()}</p>
         )}
       </div>
 
@@ -523,7 +573,6 @@ const CatalogPage = () => {
             />
           </div>
 
-          {/* Кнопка применения фильтров */}
           <div className="filter-actions">
             <button
               onClick={handleApplyFilters}
@@ -534,7 +583,6 @@ const CatalogPage = () => {
             </button>
           </div>
 
-          {/* Селектор количества товаров на странице */}
           <div className="filter-group">
             <label htmlFor="pageSize">Товаров на странице</label>
             <select
@@ -550,7 +598,6 @@ const CatalogPage = () => {
             </select>
           </div>
 
-          {/* Статистика по фильтрам */}
           <div className="filter-stats">
             <p>Найдено товаров: {allProducts.length}</p>
           </div>
@@ -585,7 +632,6 @@ const CatalogPage = () => {
                 ))}
               </div>
 
-              {/* Пагинация */}
               <Pagination />
             </>
           )}

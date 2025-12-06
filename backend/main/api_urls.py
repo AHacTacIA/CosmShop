@@ -5,8 +5,8 @@ from .views import ProfileViewSet, BrandViewSet, CategoryViewSet, ProductViewSet
     BulkProductViewSet, RegisterView
 
 router = routers.DefaultRouter()
-router.register(r'bulk-products', BulkProductViewSet, basename='bulk-product')
-router.register(r'bulk-categories', BulkCategoryViewSet, basename='bulk-category')
+# router.register(r'bulk-products', BulkProductViewSet, basename='bulk-product')
+# router.register(r'bulk-categories', BulkCategoryViewSet, basename='bulk-category')
 router.register(r'profiles', ProfileViewSet, basename='profile')
 router.register(r'brands', BrandViewSet, basename='brand')
 router.register(r'categories', CategoryViewSet, basename='category')

@@ -297,14 +297,14 @@ const OrdersPage = () => {
                     </button>
                   )}
 
-                  {order.status === 'delivered' && (
-                    <button
-                      onClick={() => handleReorder(order.id)}
-                      className="btn-action secondary"
-                    >
-                      Повторить заказ
-                    </button>
-                  )}
+                  {/*{order.status === 'delivered' && (*/}
+                  {/*  <button*/}
+                  {/*    onClick={() => handleReorder(order.id)}*/}
+                  {/*    className="btn-action secondary"*/}
+                  {/*  >*/}
+                  {/*    Повторить заказ*/}
+                  {/*  </button>*/}
+                  {/*)}*/}
                 </div>
               </div>
             ))
