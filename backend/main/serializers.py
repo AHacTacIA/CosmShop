@@ -245,10 +245,10 @@ class BrandSerializer(serializers.ModelSerializer):
         )
         return brand
 
-class BulkCategorySerializer(serializers.ListSerializer):
-    def create(self, validated_data):
-        categories = [Category(**item) for item in validated_data]
-        return Category.objects.bulk_create(categories)
+# class BulkCategorySerializer(serializers.ListSerializer):
+#     def create(self, validated_data):
+#         categories = [Category(**item) for item in validated_data]
+#         return Category.objects.bulk_create(categories)
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -260,7 +260,7 @@ class CategorySerializer(serializers.ModelSerializer):
             'name': {'validators': []},
             'slug': {'validators': []}
         }
-        list_serializer_class = BulkCategorySerializer
+        # list_serializer_class = BulkCategorySerializer
 
     def create(self, validated_data):
         category, created = Category.objects.get_or_create(
@@ -320,85 +320,212 @@ class ProductVarSerializer(serializers.ModelSerializer):
     #     return ProductImgSerializer(obj.images.all(), many=True).data
 
 
-class BulkProductSerializer(serializers.ListSerializer):
+# class BulkProductSerializer(serializers.ListSerializer):
+#     def create(self, validated_data):
+#         # Этап 1: Подготовка данных
+#         brand_data_map = {}
+#         category_data_map = {}
+#         product_data_list = []
+#
+#         # Собираем и дедуплицируем данные
+#         for product_data in validated_data:
+#             # Обрабатываем бренд
+#             brand_data = product_data.pop('brand')
+#             brand_slug = brand_data['slug']
+#             brand_data_map[brand_slug] = brand_data
+#
+#             # Обрабатываем категорию
+#             category_data = product_data.pop('category')
+#             category_id = category_data['id']
+#             category_data_map[category_id] = category_data
+#
+#             # Сохраняем данные продукта
+#             product_data_list.append({
+#                 'data': product_data,
+#                 'brand_slug': brand_slug,
+#                 'category_id': category_id,
+#                 'variants': product_data.pop('variants', [])
+#             })
+#
+#         # Этап 2: Создание объектов в транзакции
+#         with transaction.atomic():
+#             # Создаем или получаем бренды
+#             brands = {
+#                 slug: Brand.objects.get_or_create(slug=slug, defaults=data)[0]
+#                 for slug, data in brand_data_map.items()
+#             }
+#
+#             # Создаем или получаем категории
+#             categories = {
+#                 id: Category.objects.get_or_create(id=id, defaults=data)[0]
+#                 for id, data in category_data_map.items()
+#             }
+#
+#             # Создаем продукты
+#             products = []
+#             variants_to_create = []
+#             images_to_create = []
+#
+#             for item in product_data_list:
+#                 product = Product.objects.create(
+#                     brand=brands[item['brand_slug']],
+#                     category=categories[item['category_id']],
+#                     **item['data']
+#                 )
+#                 products.append(product)
+#
+#                 # Подготавливаем варианты и изображения
+#                 for variant_data in item['variants']:
+#                     variant = ProductVar(
+#                         product=product,
+#                         **{k: v for k, v in variant_data.items() if k != 'images'}
+#                     )
+#                     variants_to_create.append(variant)
+#
+#                     # Подготавливаем изображения
+#                     for image_data in variant_data.get('images', []):
+#                         images_to_create.append(ProductImg(
+#                             variant=variant,
+#                             image=image_data['image'],
+#                             is_main=image_data.get('is_main', False)
+#                         ))
+#
+#             # Массово создаем варианты
+#             if variants_to_create:
+#                 ProductVar.objects.bulk_create(variants_to_create)
+#
+#             # Массово создаем изображения
+#             if images_to_create:
+#                 ProductImg.objects.bulk_create(images_to_create)
+#
+#         return products
+
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    profile_username = serializers.CharField(source='profile.user.username', read_only=True)
+    profile_first_name = serializers.CharField(source='profile.user.first_name', read_only=True)
+    profile_last_name = serializers.CharField(source='profile.user.last_name', read_only=True)
+    product_name = serializers.CharField(source='product.name', read_only=True)
+
+    class Meta:
+        model = Review
+        fields = [
+            'id',
+            'product',
+            'profile',
+            'rating',
+            'comment',
+            'created_at',
+            'profile_username',
+            'profile_first_name',
+            'profile_last_name',
+            'product_name'
+        ]
+        read_only_fields = ['id', 'profile', 'created_at', 'profile_username', 'profile_first_name',
+                            'profile_last_name', 'product_name']
+        extra_kwargs = {
+            'product': {'write_only': True}
+        }
+
+    def validate_rating(self, value):
+        if value < 1 or value > 5:
+            raise serializers.ValidationError("Рейтинг должен быть от 1 до 5")
+        return value
+
+    def validate(self, data):
+        request = self.context.get('request')
+        product = data.get('product')
+
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError("Требуется авторизация")
+
+        profile = request.user.profile
+
+        # Для создания нового отзыва (не обновления)
+        if not self.instance:
+            # Проверяем, оставлял ли уже отзыв на этот продукт
+            if Review.objects.filter(product=product, profile=profile).exists():
+                raise serializers.ValidationError("Вы уже оставляли отзыв на этот продукт")
+
+            # Проверяем, покупал ли пользователь продукт
+            has_purchased = OrderItem.objects.filter(
+                order__profile=profile,
+                product=product,
+                order__status__in=['delivered']
+            ).exists()
+
+            if not has_purchased:
+                raise serializers.ValidationError("Вы можете оставить отзыв только на купленные товары")
+
+        return data
     def create(self, validated_data):
-        # Этап 1: Подготовка данных
-        brand_data_map = {}
-        category_data_map = {}
-        product_data_list = []
+        request = self.context.get('request')
+        validated_data['profile'] = request.user.profile
+        return super().create(validated_data)
 
-        # Собираем и дедуплицируем данные
-        for product_data in validated_data:
-            # Обрабатываем бренд
-            brand_data = product_data.pop('brand')
-            brand_slug = brand_data['slug']
-            brand_data_map[brand_slug] = brand_data
 
-            # Обрабатываем категорию
-            category_data = product_data.pop('category')
-            category_id = category_data['id']
-            category_data_map[category_id] = category_data
+# class CreateReviewSerializer(serializers.ModelSerializer):
+#     """Сериализатор для создания отзыва"""
+#
+#     class Meta:
+#         model = Review
+#         fields = ['rating', 'comment']
+#
+#     def validate_rating(self, value):
+#         if value < 1 or value > 5:
+#             raise serializers.ValidationError("Рейтинг должен быть от 1 до 5")
+#         return value
+#
+#
+# class ProductReviewSerializer(serializers.ModelSerializer):
+#     """Сериализатор для продукта с отзывами"""
+#     reviews = ReviewSerializer(many=True, read_only=True)
+#     average_rating = serializers.SerializerMethodField()
+#     reviews_count = serializers.SerializerMethodField()
+#     user_has_review = serializers.SerializerMethodField()
+#     user_has_purchased = serializers.SerializerMethodField()
+#
+#     class Meta:
+#         model = Product
+#         fields = [
+#             'id',
+#             'name',
+#             'reviews',
+#             'average_rating',
+#             'reviews_count',
+#             'user_has_review',
+#             'user_has_purchased'
+#         ]
+#
+#     def get_average_rating(self, obj):
+#         reviews = obj.reviews.all()
+#         if reviews:
+#             return round(sum(review.rating for review in reviews) / reviews.count(), 1)
+#         return 0
+#
+#     def get_reviews_count(self, obj):
+#         return obj.reviews.count()
+#
+#     def get_user_has_review(self, obj):
+#         request = self.context.get('request')
+#         if request and request.user.is_authenticated:
+#             return obj.reviews.filter(profile=request.user.profile).exists()
+#         return False
+#
+#     def get_user_has_purchased(self, obj):
+#         request = self.context.get('request')
+#         if request and request.user.is_authenticated:
+#             return OrderItem.objects.filter(
+#                 order__profile=request.user.profile,
+#                 product=obj,
+#                 order__status='delivered'  # или другой статус завершенного заказа
+#             ).exists()
+#
+#         return False
 
-            # Сохраняем данные продукта
-            product_data_list.append({
-                'data': product_data,
-                'brand_slug': brand_slug,
-                'category_id': category_id,
-                'variants': product_data.pop('variants', [])
-            })
 
-        # Этап 2: Создание объектов в транзакции
-        with transaction.atomic():
-            # Создаем или получаем бренды
-            brands = {
-                slug: Brand.objects.get_or_create(slug=slug, defaults=data)[0]
-                for slug, data in brand_data_map.items()
-            }
 
-            # Создаем или получаем категории
-            categories = {
-                id: Category.objects.get_or_create(id=id, defaults=data)[0]
-                for id, data in category_data_map.items()
-            }
-
-            # Создаем продукты
-            products = []
-            variants_to_create = []
-            images_to_create = []
-
-            for item in product_data_list:
-                product = Product.objects.create(
-                    brand=brands[item['brand_slug']],
-                    category=categories[item['category_id']],
-                    **item['data']
-                )
-                products.append(product)
-
-                # Подготавливаем варианты и изображения
-                for variant_data in item['variants']:
-                    variant = ProductVar(
-                        product=product,
-                        **{k: v for k, v in variant_data.items() if k != 'images'}
-                    )
-                    variants_to_create.append(variant)
-
-                    # Подготавливаем изображения
-                    for image_data in variant_data.get('images', []):
-                        images_to_create.append(ProductImg(
-                            variant=variant,
-                            image=image_data['image'],
-                            is_main=image_data.get('is_main', False)
-                        ))
-
-            # Массово создаем варианты
-            if variants_to_create:
-                ProductVar.objects.bulk_create(variants_to_create)
-
-            # Массово создаем изображения
-            if images_to_create:
-                ProductImg.objects.bulk_create(images_to_create)
-
-        return products
 
 class ProductSerializer(serializers.ModelSerializer):
     # category = CategorySerializer()
@@ -406,10 +533,29 @@ class ProductSerializer(serializers.ModelSerializer):
     variants = ProductVarSerializer(many=True)
     category = CategorySerializer()
 
+    reviews = ReviewSerializer(many=True, read_only=True)
+    average_rating = serializers.SerializerMethodField()
+    reviews_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
-        fields = '__all__'
-        list_serializer_class = BulkProductSerializer
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'sh_descr',
+            'descr',
+            'usage',
+            'composition',
+            'category',
+            'brand',
+            'variants',
+            'reviews',
+            'average_rating',
+            'reviews_count'
+        ]
+        # fields = '__all__'
+        # list_serializer_class = BulkProductSerializer
         # fields = ['name', 'brand', 'category_id', 'sh_descr', 'descr', 'usage', 'composition', 'variants']
 
     def create(self, validated_data):
@@ -458,20 +604,15 @@ class ProductSerializer(serializers.ModelSerializer):
 
         return product
 
+    def get_average_rating(self, obj):
+        reviews = obj.reviews.all()
+        if reviews:
+            return round(sum(review.rating for review in reviews) / reviews.count(), 1)
+        return 0
 
+    def get_reviews_count(self, obj):
+        return obj.reviews.count()
 
-
-
-
-
-
-class ReviewSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
-    product = ProductSerializer(read_only=True)
-
-    class Meta:
-        model = Review
-        fields = '__all__'
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -577,3 +718,5 @@ class CartWithItemsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cart
         fields = ['id', 'user', 'created_at', 'updated_at', 'items']
+
+

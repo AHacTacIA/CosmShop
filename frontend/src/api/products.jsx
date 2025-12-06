@@ -51,24 +51,7 @@ export const productService = {
     return apiClient.get(`/product-variants/${variantId}/`);
   },
 
-  getProductReviews: (productId) => {
-    return apiClient.get(`/products/${productId}/reviews/`);
-  },
 
-  createReview: (productId, reviewData) => {
-    return apiClient.post('/reviews/', {
-      product: productId,
-      ...reviewData
-    });
-  },
-
-  updateReview: (reviewId, reviewData) => {
-    return apiClient.put(`/reviews/${reviewId}/`, reviewData);
-  },
-
-  deleteReview: (reviewId) => {
-    return apiClient.delete(`/reviews/${reviewId}/`);
-  },
 
   addToFavorites: (productId) => {
     return apiClient.post(`/products/${productId}/favorite/`);
@@ -110,5 +93,86 @@ export const productService = {
       console.error('Error getting favorite IDs:', error);
       return [];
     }
-  }
+  },
+
+    // === МЕТОДЫ ДЛЯ РАБОТЫ С ОТЗЫВАМИ ===
+
+  /**
+   * Получить отзывы продукта с пагинацией
+   * @param {number} productId - ID продукта
+   * @param {object} params - Параметры {page, pageSize, ordering}
+   * @returns {Promise} Promise с отзывами
+   */
+  getProductReviews: (productId, params = {}) => {
+    return apiClient.get(`/products/${productId}/reviews/`, {
+      params: {
+        page: params.page,
+        page_size: params.pageSize || 10,
+        ordering: params.ordering || '-created_at' // новые первыми по умолчанию
+      }
+    });
+  },
+
+  /**
+   * Получить статистику отзывов продукта (средний рейтинг, количество)
+   * @param {number} productId - ID продукта
+   * @returns {Promise} Promise с данными статистики
+   */
+  getProductReviewsStats: async (productId) => {
+    try {
+      const response = await apiClient.get(`/products/${productId}/`);
+      const product = response.data;
+
+      return {
+        averageRating: product.average_rating || 0,
+        reviewsCount: product.reviews_count || 0,
+        ratingDistribution: product.rating_distribution || {}
+      };
+    } catch (error) {
+      console.error('Error getting product reviews stats:', error);
+      return {
+        averageRating: 0,
+        reviewsCount: 0,
+        ratingDistribution: {}
+      };
+    }
+  },
+
+  // Проверить возможность оставить отзыв
+  checkReviewEligibility: (productId) => {
+    return apiClient.get(`/products/${productId}/check_review_eligibility/`);
+  },
+
+  /**
+   * Проверить, покупал ли пользователь продукт
+   * @param {number} productId - ID продукта
+   * @returns {Promise} Promise с булевым значением
+   */
+  hasPurchasedProduct: async (productId) => {
+    try {
+      const response = await apiClient.get(`/products/${productId}/check_purchase/`);
+      return response.data.has_purchased || false;
+    } catch (error) {
+      console.error('Error checking purchase status:', error);
+      return false;
+    }
+  },
+
+
+  // createReview: (productId, reviewData) => {
+  //   return apiClient.post('/reviews/', {
+  //     product: productId,
+  //     ...reviewData
+  //   });
+  // },
+  //
+  // updateReview: (reviewId, reviewData) => {
+  //   return apiClient.put(`/reviews/${reviewId}/`, reviewData);
+  // },
+  //
+  // deleteReview: (reviewId) => {
+  //   return apiClient.delete(`/reviews/${reviewId}/`);
+  // },
+
+
 };

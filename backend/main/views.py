@@ -4,6 +4,7 @@ from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from rest_framework import filters, viewsets, permissions, status, generics, serializers
 # from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
@@ -272,9 +273,36 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def reviews(self, request, pk=None):
         product = self.get_object()
-        reviews = product.reviews.all()
-        serializer = ReviewSerializer(reviews, many=True)
+        reviews = product.reviews.all().order_by('-created_at')
+        serializer = ReviewSerializer(reviews, many=True, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def check_review_eligibility(self, request, pk=None):
+        """Проверить, может ли пользователь оставить отзыв"""
+        product = self.get_object()
+        profile = request.user.profile
+
+        has_purchased = OrderItem.objects.filter(
+            order__profile=profile,
+            product=product,
+            order__status__in=['delivered', 'completed', 'done']
+        ).exists()
+
+        has_reviewed = Review.objects.filter(
+            product=product,
+            profile=profile
+        ).exists()
+
+        return Response({
+            'can_review': has_purchased and not has_reviewed,
+            'has_purchased': has_purchased,
+            'has_reviewed': has_reviewed,
+            'message': 'Вы можете оставить отзыв' if has_purchased and not has_reviewed
+            else ('Вы уже оставляли отзыв на этот товар' if has_reviewed
+                  else 'Вы можете оставить отзыв только на купленные товары')
+        })
+
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def favorite(self, request, pk=None):
@@ -301,18 +329,18 @@ class ProductVarViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
 
 
-class ReviewViewSet(viewsets.ModelViewSet):
-    serializer_class = ReviewSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
-
-    def get_queryset(self):
-        product_id = self.request.query_params.get('product_id')
-        if product_id:
-            return Review.objects.filter(product_id=product_id)
-        return Review.objects.all()
-
-    def perform_create(self, serializer):
-        serializer.save(profile=self.request.user.profile)
+# class ReviewViewSet(viewsets.ModelViewSet):
+#     serializer_class = ReviewSerializer
+#     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+#
+#     def get_queryset(self):
+#         product_id = self.request.query_params.get('product_id')
+#         if product_id:
+#             return Review.objects.filter(product_id=product_id)
+#         return Review.objects.all()
+#
+#     def perform_create(self, serializer):
+#         serializer.save(profile=self.request.user.profile)
 
 
 class CartViewSet(viewsets.ModelViewSet):
@@ -472,3 +500,167 @@ class OrderItemViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return OrderItem.objects.filter(order__profile=self.request.user.profile)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint для управления отзывами.
+    """
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['product', 'profile', 'rating']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Опционально: сортировка по дате (новые первыми)
+        queryset = queryset.order_by('-created_at')
+
+        # Фильтрация по продукту
+        product_id = self.request.query_params.get('product')
+        if product_id:
+            queryset = queryset.filter(product_id=product_id)
+
+        return queryset
+
+    def get_permissions(self):
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
+
+    def perform_create(self, serializer):
+        serializer.save(profile=self.request.user.profile)
+
+    def perform_update(self, serializer):
+        # Проверяем, что пользователь обновляет свой отзыв
+        review = self.get_object()
+        if review.profile != self.request.user.profile and not self.request.user.is_staff:
+            raise PermissionDenied("Вы можете редактировать только свои отзывы")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        # Проверяем, что пользователь удаляет свой отзыв
+        if instance.profile != self.request.user.profile and not self.request.user.is_staff:
+            raise PermissionDenied("Вы можете удалять только свои отзывы")
+        instance.delete()
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def my_reviews(self, request):
+        """Получить отзывы текущего пользователя"""
+        reviews = self.get_queryset().filter(profile=request.user.profile)
+        page = self.paginate_queryset(reviews)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(reviews, many=True)
+        return Response(serializer.data)
+
+    def check(self, request):
+        """Проверить возможность оставить отзыв на продукт"""
+        product_id = request.query_params.get('product')
+
+        if not product_id:
+            return Response(
+                {'error': 'Не указан ID продукта'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response(
+                {'error': 'Продукт не найден'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        profile = request.user.profile
+
+        has_purchased = OrderItem.objects.filter(
+            order__profile=profile,
+            product=product,
+            order__status__in=['delivered', 'completed', 'done']
+        ).exists()
+
+        has_reviewed = Review.objects.filter(
+            product=product,
+            profile=profile
+        ).exists()
+
+        return Response({
+            'can_review': has_purchased and not has_reviewed,
+            'has_purchased': has_purchased,
+            'has_reviewed': has_reviewed,
+            'message': 'Вы можете оставить отзыв' if has_purchased and not has_reviewed
+            else ('Вы уже оставляли отзыв на этот товар' if has_reviewed
+                  else 'Вы можете оставить отзыв только на купленные товары')
+        })
+
+
+# class ProductReviewsViewSet(viewsets.GenericViewSet):
+#     """ViewSet для управления отзывами продукта"""
+#     queryset = Product.objects.all()
+#     serializer_class = ProductReviewSerializer
+#     permission_classes = [permissions.AllowAny]
+#
+#     @action(detail=True, methods=['get'])
+#     def reviews(self, request, pk=None):
+#         """Получить все отзывы продукта"""
+#         product = self.get_object()
+#         reviews = product.reviews.all().order_by('-created_at')
+#         page = self.paginate_queryset(reviews)
+#
+#         if page is not None:
+#             serializer = ReviewSerializer(page, many=True)
+#             return self.get_paginated_response(serializer.data)
+#
+#         serializer = ReviewSerializer(reviews, many=True)
+#         return Response(serializer.data)
+#
+#     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+#     def add_review(self, request, pk=None):
+#         """Добавить отзыв к продукту"""
+#         product = self.get_object()
+#         profile = request.user.profile
+#
+#         # Проверяем, купил ли пользователь продукт
+#         if not self._has_user_purchased_product(profile, product):
+#             return Response(
+#                 {
+#                     "detail": "Вы можете оставить отзыв только на купленный товар. "
+#                               "Товар должен быть в доставленном заказе.",
+#                     "code": "not_purchased"
+#                 },
+#                 status=status.HTTP_403_FORBIDDEN
+#             )
+#
+#         # Проверяем, не оставил ли уже пользователь отзыв
+#         if Review.objects.filter(product=product, profile=profile).exists():
+#             return Response(
+#                 {
+#                     "detail": "Вы уже оставили отзыв на этот товар.",
+#                     "code": "already_reviewed"
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+#
+#         serializer = CreateReviewSerializer(data=request.data)
+#         if serializer.is_valid():
+#             review = serializer.save(
+#                 profile=profile,
+#                 product=product
+#             )
+#
+#             # Возвращаем полные данные отзыва
+#             review_serializer = ReviewSerializer(review)
+#             return Response(review_serializer.data, status=status.HTTP_201_CREATED)
+#
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     def _has_user_purchased_product(self, profile, product):
+#         """Проверяет, покупал ли пользователь продукт"""
+#         return OrderItem.objects.filter(
+#             order__profile=profile,
+#             product=product,
+#             order__status__in=['delivered']
+#         ).exists()

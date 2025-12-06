@@ -496,3 +496,90 @@
 .product-card .product-brand .brand-link {
   font-size: 14px;
 }
+
+
+/* Превью отзывов */
+.reviews-preview {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 10px;
+}
+
+.reviews-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.average-rating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rating-stars {
+  color: #ffd700;
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+
+.rating-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff00aa;
+}
+
+.reviews-count {
+  font-size: 14px;
+  color: #666;
+}
+
+.review-preview {
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.reviewer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.reviewer-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.review-comment-preview {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.view-all-reviews {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 2px solid #ff00aa;
+  color: #ff00aa;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.view-all-reviews:hover {
+  background: #ff00aa;
+  color: white;
+}

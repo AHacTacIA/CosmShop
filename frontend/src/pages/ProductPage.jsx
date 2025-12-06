@@ -5,6 +5,7 @@ import { productService } from '../api/products';
 import { categoryService } from '../api/categories';
 import { useCart } from '../hooks/useCart';
 import { useWishlist } from '../hooks/useWishlist';
+import ProductReviews from '../components/ProductReviews';
 import './ProductPage.css';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,9 +25,15 @@ const ProductPage = () => {
   const [isWishlistLoading, setIsWishlistLoading] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const navigate = useNavigate();
+
+  // Проверка аутентификации
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    setIsAuthenticated(!!token);
+  }, []);
 
   // Функция для построения пути категорий
   const buildCategoryPath = useCallback(async (category) => {
@@ -38,10 +45,9 @@ const ProductPage = () => {
     // Поднимаемся по родительским категориям
     while (currentCategory.parent) {
       try {
-        // Получаем информацию о родительской категории
         const parentResponse = await categoryService.getCategory(currentCategory.parent);
         const parentCategory = parentResponse.data;
-        path.unshift(parentCategory); // Добавляем в начало
+        path.unshift(parentCategory);
         currentCategory = parentCategory;
       } catch (err) {
         console.error('Error loading parent category:', err);
@@ -65,7 +71,6 @@ const ProductPage = () => {
         // Устанавливаем первый вариант по умолчанию
         if (productData.variants && productData.variants.length > 0) {
           setSelectedVariant(productData.variants[0]);
-          // Устанавливаем главное изображение первого варианта
           const mainImage = productData.variants[0].images.find(img => img.is_main) ||
                            productData.variants[0].images[0];
           setSelectedImage(mainImage);
@@ -88,7 +93,7 @@ const ProductPage = () => {
     loadProductAndCategories();
   }, [id, buildCategoryPath]);
 
-  // Отдельный эффект для проверки избранного после загрузки продукта
+  // Проверка избранного после загрузки продукта
   useEffect(() => {
     if (product) {
       setIsFavorite(isInWishlist(product.id));
@@ -98,7 +103,6 @@ const ProductPage = () => {
   // Обработчик изменения варианта
   const handleVariantChange = (variant) => {
     setSelectedVariant(variant);
-    // Устанавливаем главное изображение выбранного варианта
     const mainImage = variant.images.find(img => img.is_main) || variant.images[0];
     setSelectedImage(mainImage);
   };
@@ -161,12 +165,13 @@ const ProductPage = () => {
 
   // Рендер хлебных крошек
   const renderBreadcrumbs = () => {
+    if (!product) return null;
+
     return (
       <div className="breadcrumbs">
         <a href="/">Главная</a>
         <span className="breadcrumb-separator"> / </span>
 
-        {/* Все категории пути */}
         {categoryPath.map((category, index) => (
           <span key={category.id}>
             <a href={`/category/${category.slug}`}>{category.name}</a>
@@ -176,7 +181,6 @@ const ProductPage = () => {
           </span>
         ))}
 
-        {/* Название продукта (последний элемент) */}
         <span className="breadcrumb-separator"> / </span>
         <span className="current">{product.name}</span>
       </div>
@@ -365,6 +369,47 @@ const ProductPage = () => {
               </div>
             )}
           </div>
+
+          {/* Отзывы - превью */}
+          {product.reviews && product.reviews.length > 0 && (
+            <div className="reviews-preview">
+              <div className="reviews-summary">
+                <div className="average-rating">
+                  <span className="rating-stars">
+                    {'★'.repeat(Math.round(product.average_rating))}
+                    {'☆'.repeat(5 - Math.round(product.average_rating))}
+                  </span>
+                  <span className="rating-value">{product.average_rating.toFixed(1)}</span>
+                </div>
+                <span className="reviews-count">{product.reviews_count} отзывов</span>
+              </div>
+
+              {product.reviews.slice(0, 2).map((review) => (
+                <div key={review.id} className="review-preview">
+                  <div className="reviewer">
+                    <span className="reviewer-name">
+                      {review.profile_first_name || review.profile_username}
+                    </span>
+                    <div className="review-rating">
+                      {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                    </div>
+                  </div>
+                  <p className="review-comment-preview">
+                    {review.comment.length > 100
+                      ? `${review.comment.substring(0, 100)}...`
+                      : review.comment}
+                  </p>
+                </div>
+              ))}
+
+              <button
+                className="view-all-reviews"
+                onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Все отзывы ↓
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -402,9 +447,18 @@ const ProductPage = () => {
             </div>
           </section>
         )}
+
+        {/* Секция отзывов */}
+        <section className="detail-section" id="reviews-section">
+          <ProductReviews
+            productId={product.id}
+            isAuthenticated={isAuthenticated}
+            productName={product.name}
+          />
+        </section>
       </div>
     </div>
   );
 };
 
-export {ProductPage};
+export { ProductPage };
